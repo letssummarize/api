@@ -1,18 +1,21 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnsupportedMediaTypeException,
+} from '@nestjs/common';
 import OpenAI from 'openai';
-import Ffmpeg from 'fluent-ffmpeg';
-import { promisify } from 'util';
-import { createWriteStream, unlinkSync, existsSync, mkdirSync, createReadStream } from 'fs';
-import { join } from 'path';
+import { unlinkSync, existsSync, mkdirSync, createReadStream } from 'fs';
+import { extname, join } from 'path';
 import { create } from 'youtube-dl-exec';
 import { config } from 'dotenv';
 import { SummarizeVideoDto } from './dto/summarize-video.dto';
+import { extractTextFromPdf, extractTextFromDocx } from 'src/utils/files.util';
 config();
 
 @Injectable()
 export class SummarizationService {
   // private readonly openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  private readonly ytdlp = create('E:/yt-dlp/yt-dlp.exe'); // Using custom binary
+  private readonly ytdlp = create(process.env.PATH_TO_YT_DLP || 'add-your-path-here'); // Using custom binary
 
   private readonly DOWNLOAD_DIR = join(__dirname, '..', '..', 'downloads');
   private readonly AUDIO_FORMAT = 'mp3';
@@ -51,7 +54,25 @@ export class SummarizationService {
   }
 
   /**
+   * Summarizes an uploaded file.
+   */
+  async summarizeFile(file: Express.Multer.File, userApiKey?: string): Promise<string> {
+    console.log(`Processing file: ${file.originalname} (${file.mimetype})`);
+
+    // Extract text based on file type
+    const text = await this.extractTextFromFile(file);
+
+    if (!text.trim()) {
+      throw new BadRequestException('Could not extract text from the file.');
+    }
+
+    // Summarize the extracted text
+    return this.summarizeText(text, userApiKey);
+  }
+
+  /**
    * Downloads audio from a YouTube video using yt-dlp-exec.
+   * TODO: This method will be improved later.
    */
   async downloadAudio(videoUrl: string): Promise<string> {
     const audioPath = join(this.DOWNLOAD_DIR, `audio.${this.AUDIO_FORMAT}`);
@@ -90,7 +111,9 @@ export class SummarizationService {
    * Transcribes the audio file to text using OpenAI's Whisper model.
    */
   private async transcribeAudio(audioPath: string, userApiKey?: string): Promise<string> {
-    const openaiClient = new OpenAI({ apiKey: userApiKey || process.env.OPENAI_API_KEY });
+    const openaiClient = new OpenAI({
+      apiKey: userApiKey || process.env.OPENAI_API_KEY,
+    });
 
     try {
       console.log('Transcribing audio...');
@@ -113,22 +136,56 @@ export class SummarizationService {
    * Summarizes the given transcript using OpenAI's GPT model.
    */
   async summarizeText(transcript: string, userApiKey?: string): Promise<string> {
-    const openaiClient = new OpenAI({ apiKey: userApiKey || process.env.OPENAI_API_KEY });
+    const openaiClient = new OpenAI({
+      apiKey: userApiKey || process.env.OPENAI_API_KEY,
+    });
 
     try {
       console.log('Summarizing transcript...');
       const response = await openaiClient.chat.completions.create({
         model: 'gpt-4',
         messages: [
-          { role: 'system', content: 'You are a summarization expert who extracts key details from long texts.' },
-          { role: 'user', content: `Summarize the following text:\n\n${transcript}` },
+          {
+            role: 'system',
+            content:
+              'You are a summarization expert who extracts key details from long texts.',
+          },
+          {
+            role: 'user',
+            content: `Summarize the following text:\n\n${transcript}`,
+          },
         ],
         max_tokens: 150,
       });
 
-      return response.choices[0]?.message?.content || 'Could not generate a summary.';
+      return (
+        response.choices[0]?.message?.content || 'Could not generate a summary.'
+      );
     } catch (error) {
       throw new Error(`Failed to summarize text: ${error.message}`);
+    }
+  }
+
+  /**
+   * Extracts text from different file formats.
+   */
+  private async extractTextFromFile(file: Express.Multer.File): Promise<string> {
+    const ext = extname(file.originalname).toLowerCase();
+
+    switch (ext) {
+      case '.txt':
+        return file.buffer.toString('utf-8'); // Read plain text file
+
+      case '.pdf':
+        return extractTextFromPdf(file);
+
+      case '.docx':
+        return extractTextFromDocx(file);
+
+      default:
+        throw new UnsupportedMediaTypeException(
+          'Unsupported file format. Only PDF, TXT, and DOCX are allowed.',
+        );
     }
   }
 }
