@@ -1,5 +1,5 @@
 {
   "release-type": "node",
-  "package-name": "@letssummarize/api",
-  "prerelease": "beta"
+  "prerelease": true,
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
 }
