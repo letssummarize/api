@@ -1,0 +1,14 @@
+@apiKey = {{$dotenv OPENAI_API_KEY}}
+@baseUrl = http://localhost:3000
+@ytVideo = https://www.youtube.com/watch?v=pNlq-EVld70
+
+### Summarize YouTube Video
+POST {{baseUrl}}/summarize/video
+Content-Type: application/json
+Authorization: Bearer {{apiKey}}
+
+{
+    "content": {
+      "videoUrl": "{{ytVideo}}"
+    }
+}
