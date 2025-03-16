@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class SummarizeVideoDto {
+export class SummarizeTextDto {
   @IsString()
   @IsNotEmpty()
-  videoUrl: string;
+  text: string;
 }

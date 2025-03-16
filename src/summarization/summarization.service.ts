@@ -5,19 +5,33 @@ import {
 } from '@nestjs/common';
 import OpenAI from 'openai';
 import { unlinkSync, existsSync, mkdirSync, createReadStream } from 'fs';
-import { extname, join } from 'path';
+import { basename, extname, join } from 'path';
 import { create } from 'youtube-dl-exec';
 import { config } from 'dotenv';
 import { SummarizeVideoDto } from './dto/summarize-video.dto';
 import { extractTextFromPdf, extractTextFromDocx } from 'src/utils/files.util';
+import { SummarizationOptions } from './interfaces/summarization-options.interface';
+import { SummarizationOptionsDto } from './dto/summarization-options.dto';
+import {
+  cleanupFiles,
+  extractPrefixFromPath,
+  generateRandomSuffix,
+  getApiKey,
+  getSummarizationOptions,
+  isValidYouTubeUrl,
+} from 'src/utils/summarization.util';
 config();
 
 @Injectable()
 export class SummarizationService {
-  // private readonly openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  private readonly ytdlp = create(process.env.PATH_TO_YT_DLP || 'add-your-path-here'); // Using custom binary
+  // Default OpenAI API key for our service. Users need to provide their own API key when integrating with our service.
+  private readonly defaultApiKey = process.env.OPENAI_API_KEY;
 
-  private readonly DOWNLOAD_DIR = join(__dirname, '..', '..', 'downloads');
+  private readonly ytdlp = create(
+    process.env.PATH_TO_YT_DLP || 'add-your-path-here',
+  ); // Using custom binary
+
+  private readonly DOWNLOAD_DIR = join(process.cwd(), 'downloads');
   private readonly AUDIO_FORMAT = 'mp3';
 
   constructor() {
@@ -27,10 +41,25 @@ export class SummarizationService {
   }
 
   /**
-   * Summarizes a YouTube video by downloading its audio, transcribing it, and summarizing the transcript.
+   * Summarizes a YouTube video by downloading its audio, transcribing it,
+   * and generating a summary using GPT-4o.
+   * @param content - DTO containing the YouTube video URL.
+   * @param optionsDto - User-specified summarization options (length, format, etc.).
+   * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service).
+   * @returns The transcript and summary of the video.
    */
-  async summarizeYouTubeVideo(dto: SummarizeVideoDto) {
-    const { videoUrl, userApiKey } = dto;
+  async summarizeYouTubeVideo(
+    content: SummarizeVideoDto,
+    optionsDto?: SummarizationOptionsDto,
+    userApiKey?: string,
+  ) {
+    const { videoUrl } = content;
+
+    if (!isValidYouTubeUrl(videoUrl)) {
+      throw new BadRequestException('Invalid YouTube URL');
+    }
+
+    const options = getSummarizationOptions(optionsDto);
 
     try {
       console.log('Summarizing video:', videoUrl);
@@ -41,10 +70,11 @@ export class SummarizationService {
       const transcript = await this.transcribeAudio(audioPath, userApiKey);
       console.log('Transcript:', transcript);
 
-      const summary = await this.summarizeText(transcript, userApiKey);
+      const summary = await this.summarizeText(transcript, options, userApiKey);
       console.log('Summary:', summary);
 
-      unlinkSync(audioPath);
+      const prefix = extractPrefixFromPath(audioPath);
+      cleanupFiles(this.DOWNLOAD_DIR, prefix);
 
       return { transcript, summary };
     } catch (error) {
@@ -55,9 +85,18 @@ export class SummarizationService {
 
   /**
    * Summarizes an uploaded file.
+   * @param file - The uploaded file (PDF, DOCX, or TXT).
+   * @param optionsDto - User-specified summarization options.
+   * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service).
+   * @returns The summarized text of the file's content.
    */
-  async summarizeFile(file: Express.Multer.File, userApiKey?: string): Promise<string> {
+  async summarizeFile(
+    file: Express.Multer.File,
+    optionsDto?: SummarizationOptionsDto,
+    userApiKey?: string,
+  ): Promise<string> {
     console.log(`Processing file: ${file.originalname} (${file.mimetype})`);
+    const options = getSummarizationOptions(optionsDto);
 
     // Extract text based on file type
     const text = await this.extractTextFromFile(file);
@@ -67,16 +106,18 @@ export class SummarizationService {
     }
 
     // Summarize the extracted text
-    return this.summarizeText(text, userApiKey);
+    return this.summarizeText(text, options, userApiKey);
   }
 
   /**
    * Downloads audio from a YouTube video using yt-dlp-exec.
-   * TODO: This method will be improved later.
+   * @param videoUrl - The URL of the YouTube video.
+   * @returns The file path of the downloaded audio.
+   * @throws Error if the audio download fails.
    */
   async downloadAudio(videoUrl: string): Promise<string> {
-    const audioPath = join(this.DOWNLOAD_DIR, `audio.${this.AUDIO_FORMAT}`);
-    const webmPath = join(this.DOWNLOAD_DIR, `audio.webm`);
+    const prefix = generateRandomSuffix();
+    const audioPath = join(this.DOWNLOAD_DIR, `${prefix}.${this.AUDIO_FORMAT}`);
 
     try {
       console.log('Downloading audio...');
@@ -95,11 +136,6 @@ export class SummarizationService {
         throw new Error('Audio file was not created.');
       }
 
-      if (existsSync(webmPath)) {
-        unlinkSync(webmPath);
-        console.log('Deleted temporary .webm file.');
-      }
-
       return audioPath;
     } catch (error) {
       console.error('Error downloading audio:', error);
@@ -108,12 +144,17 @@ export class SummarizationService {
   }
 
   /**
-   * Transcribes the audio file to text using OpenAI's Whisper model.
+   * Transcribes an audio file using OpenAI's Whisper model.
+   * @param audioPath - Path to the downloaded audio file.
+   * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service).
+   * @returns The transcribed text from the audio file.
    */
-  private async transcribeAudio(audioPath: string, userApiKey?: string): Promise<string> {
-    const openaiClient = new OpenAI({
-      apiKey: userApiKey || process.env.OPENAI_API_KEY,
-    });
+  private async transcribeAudio(
+    audioPath: string,
+    userApiKey?: string,
+  ): Promise<string> {
+    const apiKey = getApiKey(userApiKey, this.defaultApiKey);
+    const openaiClient = new OpenAI({ apiKey });
 
     try {
       console.log('Transcribing audio...');
@@ -133,17 +174,26 @@ export class SummarizationService {
   }
 
   /**
-   * Summarizes the given transcript using OpenAI's GPT model.
+   * Generates a summary for the given text using GPT-4o.
+   * @param text - The text to summarize.
+   * @param options - Summarization preferences (length, format, etc.).
+   * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service).
+   * @returns The summarized version of the input text.
    */
-  async summarizeText(transcript: string, userApiKey?: string): Promise<string> {
-    const openaiClient = new OpenAI({
-      apiKey: userApiKey || process.env.OPENAI_API_KEY,
-    });
+  async summarizeText(
+    text: string,
+    options?: SummarizationOptions,
+    userApiKey?: string,
+  ): Promise<string> {
+    const apiKey = getApiKey(userApiKey, this.defaultApiKey);
+    const openaiClient = new OpenAI({ apiKey });
 
     try {
-      console.log('Summarizing transcript...');
+      console.log('Summarizing text...');
+      const { length, format, listen } = getSummarizationOptions(options);
+      const prompt = `Summarize the following text in a ${length} format, in ${format} style:\n\n${text}`;
       const response = await openaiClient.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -152,7 +202,7 @@ export class SummarizationService {
           },
           {
             role: 'user',
-            content: `Summarize the following text:\n\n${transcript}`,
+            content: prompt,
           },
         ],
         max_tokens: 150,
@@ -168,8 +218,13 @@ export class SummarizationService {
 
   /**
    * Extracts text from different file formats.
+   * @param file - The uploaded file (PDF, DOCX, or TXT).
+   * @returns The extracted text from the file.
+   * @throws UnsupportedMediaTypeException if the file format is not supported.
    */
-  private async extractTextFromFile(file: Express.Multer.File): Promise<string> {
+  private async extractTextFromFile(
+    file: Express.Multer.File,
+  ): Promise<string> {
     const ext = extname(file.originalname).toLowerCase();
 
     switch (ext) {
