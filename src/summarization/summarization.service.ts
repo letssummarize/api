@@ -118,9 +118,12 @@ export class SummarizationService {
   async downloadAudio(videoUrl: string): Promise<string> {
     const prefix = generateRandomSuffix();
     const audioPath = join(this.DOWNLOAD_DIR, `${prefix}.${this.AUDIO_FORMAT}`);
+    const startTime = new Date();
 
     try {
-      console.log('Downloading audio...');
+      console.log(
+        `Downloading audio... Started at ${startTime.toISOString()}`,
+      );
       await this.ytdlp(videoUrl, {
         extractAudio: true,
         audioFormat: this.AUDIO_FORMAT,
@@ -130,7 +133,11 @@ export class SummarizationService {
         preferFreeFormats: true,
       });
 
-      console.log('Audio downloaded:', audioPath);
+      const endTime = new Date();
+      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+      console.log(
+        `Downloaded audio: ${audioPath}. Finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+      );
 
       if (!existsSync(audioPath)) {
         throw new Error('Audio file was not created.');
@@ -138,7 +145,11 @@ export class SummarizationService {
 
       return audioPath;
     } catch (error) {
-      console.error('Error downloading audio:', error);
+      const failTime = new Date();
+      const duration = (failTime.getTime() - startTime.getTime()) / 1000;
+      console.error(
+        `Error downloading audio: ${error}. Finished at ${failTime.toISOString()}. Time taken: ${duration} seconds`,
+      );
       throw new Error('Failed to download audio');
     }
   }
@@ -155,9 +166,12 @@ export class SummarizationService {
   ): Promise<string> {
     const apiKey = getApiKey(userApiKey, this.defaultApiKey);
     const openaiClient = new OpenAI({ apiKey });
+    const startTime = new Date();
 
     try {
-      console.log('Transcribing audio...');
+      console.log(
+        `Transcribing audio... Started at ${startTime.toISOString()}`,
+      );
       const fileStream = createReadStream(audioPath);
 
       const response = await openaiClient.audio.transcriptions.create({
@@ -167,8 +181,19 @@ export class SummarizationService {
         response_format: 'json',
       });
 
+      const endTime = new Date();
+      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+      console.log(
+        `Transcription finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+      );
+
       return response.text;
     } catch (error) {
+      const failTime = new Date();
+      const duration = (failTime.getTime() - startTime.getTime()) / 1000;
+      console.error(
+        `Transcription failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
+      );
       throw new Error(`Failed to transcribe audio: ${error.message}`);
     }
   }
@@ -187,9 +212,10 @@ export class SummarizationService {
   ): Promise<string> {
     const apiKey = getApiKey(userApiKey, this.defaultApiKey);
     const openaiClient = new OpenAI({ apiKey });
+    const startTime = new Date();
 
     try {
-      console.log('Summarizing text...');
+      console.log(`Summarizing text... Started at ${startTime.toISOString()}`);
       const { length, format, listen } = getSummarizationOptions(options);
       const prompt = `Summarize the following text in a ${length} format, in ${format} style:\n\n${text}`;
       const response = await openaiClient.chat.completions.create({
@@ -208,10 +234,21 @@ export class SummarizationService {
         max_tokens: 150,
       });
 
+      const endTime = new Date();
+      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+      console.log(
+        `Summarization finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+      );
+
       return (
         response.choices[0]?.message?.content || 'Could not generate a summary.'
       );
     } catch (error) {
+      const failTime = new Date();
+      const duration = (failTime.getTime() - startTime.getTime()) / 1000;
+      console.error(
+        `Summarization failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
+      );
       throw new Error(`Failed to summarize text: ${error.message}`);
     }
   }
