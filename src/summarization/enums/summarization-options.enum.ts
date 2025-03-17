@@ -9,3 +9,8 @@ export enum SummaryFormat {
     BULLET_POINTS = 'bullet-points',
     NARRATIVE = 'narrative'
 }
+
+export enum SummarizationModel {
+    OPENAI = 'openai',
+    DEEPSEEK = 'deepseek',
+}

@@ -20,12 +20,14 @@ import {
   getSummarizationOptions,
   isValidYouTubeUrl,
 } from 'src/utils/summarization.util';
+import { SummarizationModel } from './enums/summarization-options.enum';
 config();
 
 @Injectable()
 export class SummarizationService {
   // Default OpenAI API key for our service. Users need to provide their own API key when integrating with our service.
-  private readonly defaultApiKey = process.env.OPENAI_API_KEY;
+  private readonly defaultOpenAiApiKey = process.env.OPENAI_API_KEY;
+  private readonly defaultDeepSeekApiKey = process.env.DEEPSEEK_API_KEY;
 
   private readonly ytdlp = create(
     process.env.PATH_TO_YT_DLP || 'add-your-path-here',
@@ -153,7 +155,7 @@ export class SummarizationService {
     audioPath: string,
     userApiKey?: string,
   ): Promise<string> {
-    const apiKey = getApiKey(userApiKey, this.defaultApiKey);
+    const apiKey = getApiKey(userApiKey, this.defaultOpenAiApiKey);
     const openaiClient = new OpenAI({ apiKey });
 
     try {
@@ -185,14 +187,26 @@ export class SummarizationService {
     options?: SummarizationOptions,
     userApiKey?: string,
   ): Promise<string> {
-    const apiKey = getApiKey(userApiKey, this.defaultApiKey);
-    const openaiClient = new OpenAI({ apiKey });
+    const { length, format, listen } = getSummarizationOptions(options);
+    const prompt = `Summarize the following text in a ${length} format, in ${format} style:\n\n${text}`;
+
+    let apiKey: string;
+    if (options?.model === SummarizationModel.DEEPSEEK) {
+      apiKey = getApiKey(userApiKey, this.defaultDeepSeekApiKey);
+      return this.summarizeWithDeepSeek(apiKey, prompt);
+    } else {
+      apiKey = getApiKey(userApiKey, this.defaultOpenAiApiKey);
+      return  this.summarizeWithOpenAi(apiKey, prompt);
+    }
+
+  }
+
+  async summarizeWithOpenAi(apiKey: string, prompt: string): Promise<string> {
+    const openai = new OpenAI({apiKey});
 
     try {
-      console.log('Summarizing text...');
-      const { length, format, listen } = getSummarizationOptions(options);
-      const prompt = `Summarize the following text in a ${length} format, in ${format} style:\n\n${text}`;
-      const response = await openaiClient.chat.completions.create({
+      console.log('Summarizing text with gpt-4o...');
+      const response = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
           {
@@ -208,6 +222,36 @@ export class SummarizationService {
         max_tokens: 150,
       });
 
+      return (
+        response.choices[0]?.message?.content || 'Could not generate a summary.'
+      );
+    } catch (error) {
+      throw new Error(`Failed to summarize text: ${error.message}`);
+    }
+  }
+
+  async summarizeWithDeepSeek(apiKey: string, prompt: string): Promise<string> {
+    const openai = new OpenAI({
+      baseURL: 'https://api.deepseek.com',
+      apiKey: apiKey,
+    });
+    try {
+      console.log('Summarizing text with deepseek...');
+      const response = await openai.chat.completions.create({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a summarization expert who extracts key details from long texts.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        max_tokens: 150,
+      });
       return (
         response.choices[0]?.message?.content || 'Could not generate a summary.'
       );
