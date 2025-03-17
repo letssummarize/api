@@ -59,3 +59,18 @@ export function extractPrefixFromPath(filePath: string): string {
   const prefix = filename.split('.').slice(0, -1).join('.');
   return prefix;
 }
+
+export function extractVideoId(url: string): string | null {
+  const patterns = [
+    /(?:v=|\/)([\w-]{11})(?:\?|&|\/|$)/,
+    /youtu\.be\/([\w-]{11})(?:\?|&|$)/,
+    /\/shorts\/([\w-]{11})(?:\?|&|$)/
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+
+  return null;
+}

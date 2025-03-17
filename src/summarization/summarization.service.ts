@@ -15,11 +15,13 @@ import { SummarizationOptionsDto } from './dto/summarization-options.dto';
 import {
   cleanupFiles,
   extractPrefixFromPath,
+  extractVideoId,
   generateRandomSuffix,
   getApiKey,
   getSummarizationOptions,
   isValidYouTubeUrl,
 } from 'src/utils/summarization.util';
+import { YoutubeTranscript } from 'youtube-transcript';
 config();
 
 @Injectable()
@@ -33,6 +35,7 @@ export class SummarizationService {
 
   private readonly DOWNLOAD_DIR = join(process.cwd(), 'downloads');
   private readonly AUDIO_FORMAT = 'mp3';
+  private readonly MAX_TOKENS = 15000;
 
   constructor() {
     if (!existsSync(this.DOWNLOAD_DIR)) {
@@ -41,12 +44,12 @@ export class SummarizationService {
   }
 
   /**
-   * Summarizes a YouTube video by downloading its audio, transcribing it,
-   * and generating a summary using GPT-4o.
-   * @param content - DTO containing the YouTube video URL.
-   * @param optionsDto - User-specified summarization options (length, format, etc.).
-   * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service).
-   * @returns The transcript and summary of the video.
+   * Summarizes a YouTube video using either direct transcript fetching or audio-based transcription.
+   * @param content - Contains the videoUrl to be summarized
+   * @param optionsDto - User-specified summarization options (length, format, etc.)
+   * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service)
+   * @returns An object containing the transcript and summary of the video
+   * @throws BadRequestException if the YouTube URL is invalid or if summarization fails
    */
   async summarizeYouTubeVideo(
     content: SummarizeVideoDto,
@@ -62,24 +65,75 @@ export class SummarizationService {
     const options = getSummarizationOptions(optionsDto);
 
     try {
-      console.log('Summarizing video:', videoUrl);
+      console.log('Fetching transcript for video:', videoUrl);
 
+      try {
+        const videoId = extractVideoId(videoUrl);
+        if (!videoId) {
+          return this.summarizeYouTubeVideoUsingAudio(
+            videoUrl,
+            options,
+            userApiKey,
+          );
+        }
+        const transcript = await this.fetchYouTubeTranscript(videoId);
+        const summary = await this.summarizeText(
+          transcript,
+          options,
+          userApiKey,
+        );
+        return { transcript, summary };
+      } catch (transcriptError) {
+        return this.summarizeYouTubeVideoUsingAudio(
+          videoUrl,
+          options,
+          userApiKey,
+        );
+      }
+    } catch (error) {
+      console.error('Error:', error.message);
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  private async fetchYouTubeTranscript(videoId: string): Promise<string> {
+    try {
+      const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+      const fullTranscript = transcriptItems
+        .map((item) => item.text.trim())
+        .filter((text) => text.length > 0)
+        .join(' ');
+
+      const words = fullTranscript.split(' ');
+      const safeLength = Math.floor(this.MAX_TOKENS / 4);
+      return words.slice(0, safeLength).join(' ');
+    } catch (error) {
+      throw new Error(
+        `Could not fetch transcript from YouTube: ${error.message}`,
+      );
+    }
+  }
+
+  private async summarizeYouTubeVideoUsingAudio(
+    videoUrl: string,
+    options: SummarizationOptions,
+    userApiKey?: string,
+  ) {
+    try {
+      console.log(
+        'Direct transcript fetch failed, falling back to audio download:',
+      );
       const audioPath = await this.downloadAudio(videoUrl);
-      console.log('Downloaded Audio Path:', audioPath);
-
       const transcript = await this.transcribeAudio(audioPath, userApiKey);
-      console.log('Transcript:', transcript);
-
       const summary = await this.summarizeText(transcript, options, userApiKey);
-      console.log('Summary:', summary);
-
       const prefix = extractPrefixFromPath(audioPath);
       cleanupFiles(this.DOWNLOAD_DIR, prefix);
 
       return { transcript, summary };
     } catch (error) {
-      console.error('Error:', error.message);
-      throw new BadRequestException(error.message);
+      throw new Error(
+        `Failed to summarize video using audio: ${error.message}`,
+      );
     }
   }
 
@@ -121,9 +175,7 @@ export class SummarizationService {
     const startTime = new Date();
 
     try {
-      console.log(
-        `Downloading audio... Started at ${startTime.toISOString()}`,
-      );
+      console.log(`Downloading audio... Started at ${startTime.toISOString()}`);
       await this.ytdlp(videoUrl, {
         extractAudio: true,
         audioFormat: this.AUDIO_FORMAT,
