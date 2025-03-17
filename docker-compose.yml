@@ -1,10 +1,12 @@
 version: '3.8'
 
 services:
-  lets-summarize-api:
-    build: .
-    env_file: .env  
+  whisper:
+    build: ./src/python
+    container_name: faster-whisper
     ports:
-      - "5000:5000"
-    volumes:
-      - ./temp:/app/temp  
+      - '5566:5566'
+    environment:
+      - MODEL_SIZE=small
+      - DEVICE=cpu 
+    restart: unless-stopped
