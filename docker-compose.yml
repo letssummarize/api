@@ -9,4 +9,5 @@ services:
     environment:
       - MODEL_SIZE=small
       - DEVICE=cpu 
+      - TRANSCRIBE_API_PORT=5566
     restart: unless-stopped

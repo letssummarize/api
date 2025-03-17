@@ -3,9 +3,14 @@ from faster_whisper import WhisperModel
 import tempfile
 import os
 import logging
+import sys
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger("transcribe_api")
 
 app = FastAPI()
@@ -17,25 +22,41 @@ DEVICE = os.getenv("DEVICE", "cpu")  # Use "cuda" for GPU if available
 # Set compute type (Use "int8" for CPU, "float16" for GPU)
 COMPUTE_TYPE = "int8" if DEVICE == "cpu" else "float16"
 
-logger.info(f"Loading Whisper model: {MODEL_SIZE} on {DEVICE} with {COMPUTE_TYPE}")
+logger.info(f"Starting with configuration: MODEL_SIZE={MODEL_SIZE}, DEVICE={DEVICE}, COMPUTE_TYPE={COMPUTE_TYPE}")
 
-# Load the Faster-Whisper model
-try:
-    model = WhisperModel(MODEL_SIZE, device=DEVICE, compute_type=COMPUTE_TYPE)
-    logger.info("Model loaded successfully!")
-except Exception as e:
-    logger.error(f"Failed to load model: {e}")
-    model = None  # Prevent app crash if model fails
+# Global model variable
+model = None
+
+def load_model():
+    """Load the Whisper model with proper error handling"""
+    global model
+    try:
+        logger.info("Starting model loading...")
+        model = WhisperModel(MODEL_SIZE, device=DEVICE, compute_type=COMPUTE_TYPE)
+        logger.info("Model loaded successfully!")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to load model: {str(e)}", exc_info=True)
+        return False
 
 @app.get("/")
 def health_check():
     """Simple health check endpoint"""
     return {"status": "running", "model_loaded": model is not None}
 
+@app.get("/load-model")
+def load_model_endpoint():
+    """Endpoint to explicitly load the model"""
+    success = load_model()
+    return {"status": "success" if success else "failed", "model_loaded": model is not None}
+
 @app.post("/transcribe/")
 async def transcribe_audio(file: UploadFile = File(...)):
     """Receives an audio file and returns its transcript"""
-    if not model:
+    global model
+    
+    # Try to load model if it's not loaded yet
+    if model is None and not load_model():
         return {"error": "Model failed to load. Check logs."}
 
     logger.info(f"Received file: {file.filename}")
@@ -53,7 +74,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
         transcription = " ".join(segment.text for segment in segments)
         logger.info(f"Transcription completed: {transcription[:100]}...")  # Show first 100 chars
     except Exception as e:
-        logger.error(f"Transcription failed: {e}")
+        logger.error(f"Transcription failed: {str(e)}", exc_info=True)
         return {"error": str(e)}
 
     # Cleanup
@@ -63,6 +84,13 @@ async def transcribe_audio(file: UploadFile = File(...)):
     return {"text": transcription, "language": info.language, "probability": info.language_probability}
 
 if __name__ == "__main__":
-    logger.info(f"Starting FastAPI server on port {os.getenv('TRANSCRIBE_API_PORT', 5566)}")
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("TRANSCRIBE_API_PORT", 5566)))
+    try:
+        # Don't load model at startup, load it on first request
+        # This makes the API start faster
+        
+        port = int(os.getenv("TRANSCRIBE_API_PORT", 5566))
+        logger.info(f"Starting FastAPI server on port {port}")
+        import uvicorn
+        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    except Exception as e:
+        logger.error(f"Failed to start server: {str(e)}", exc_info=True)

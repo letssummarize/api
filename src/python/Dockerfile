@@ -19,4 +19,4 @@ RUN mkdir -p /root/.cache/whisper && \
 COPY . .
 
 # Run the FastAPI application
-CMD ["python", "-m", "uvicorn", "transcribe_api:app", "--host", "0.0.0.0", "--port", "5566"]
+CMD ["python", "transcribe_api.py"]
