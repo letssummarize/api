@@ -4,41 +4,43 @@ import {
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import OpenAI from 'openai';
-import { unlinkSync, existsSync, mkdirSync, createReadStream } from 'fs';
-import { basename, extname, join } from 'path';
+import { existsSync, mkdirSync, createReadStream } from 'fs';
+import { promises as fsPromises} from 'fs'
+import { extname, join } from 'path';
 import { create } from 'youtube-dl-exec';
-import { config } from 'dotenv';
 import { SummarizeVideoDto } from './dto/summarize-video.dto';
-import { extractTextFromPdf, extractTextFromDocx } from 'src/utils/files.util';
+import { extractTextFromPdf, extractTextFromDocx, cleanupOldFiles } from 'src/utils/files.util';
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
 import { SummarizationOptionsDto } from './dto/summarization-options.dto';
 import {
-  cleanupFiles,
-  extractPrefixFromPath,
-  generateRandomSuffix,
   getApiKey,
   getSummarizationOptions,
   isValidYouTubeUrl,
 } from 'src/utils/summarization.util';
+import {
+  DEFAULT_OPENAI_API_KEY,
+  DEFAULT_DEEPSEEK_API_KEY,
+  PATH_TO_YT_DLP,
+  DOWNLOAD_DIR,
+  PUBLIC_DIR,
+  AUDIO_FORMAT,
+  MAX_FILE_AGE,
+} from 'src/utils/constants';
+import { generateAudioFilename } from 'src/utils/files.util';
 import { SummarizationModel } from './enums/summarization-options.enum';
-config();
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class SummarizationService {
-  // Default OpenAI API key for our service. Users need to provide their own API key when integrating with our service.
-  private readonly defaultOpenAiApiKey = process.env.OPENAI_API_KEY;
-  private readonly defaultDeepSeekApiKey = process.env.DEEPSEEK_API_KEY;
 
   private readonly ytdlp = create(
-    process.env.PATH_TO_YT_DLP || 'add-your-path-here',
+    PATH_TO_YT_DLP || 'add-your-path-here',
   ); // Using custom binary
-
-  private readonly DOWNLOAD_DIR = join(process.cwd(), 'downloads');
-  private readonly AUDIO_FORMAT = 'mp3';
+  
 
   constructor() {
-    if (!existsSync(this.DOWNLOAD_DIR)) {
-      mkdirSync(this.DOWNLOAD_DIR, { recursive: true });
+    if (!existsSync(DOWNLOAD_DIR)) {
+      mkdirSync(DOWNLOAD_DIR, { recursive: true });
     }
   }
 
@@ -74,9 +76,7 @@ export class SummarizationService {
 
       const summary = await this.summarizeText(transcript, options, userApiKey);
       console.log('Summary:', summary);
-
-      const prefix = extractPrefixFromPath(audioPath);
-      cleanupFiles(this.DOWNLOAD_DIR, prefix);
+      
 
       return { transcript, summary };
     } catch (error) {
@@ -96,7 +96,7 @@ export class SummarizationService {
     file: Express.Multer.File,
     optionsDto?: SummarizationOptionsDto,
     userApiKey?: string,
-  ): Promise<string> {
+  ) {
     console.log(`Processing file: ${file.originalname} (${file.mimetype})`);
     const options = getSummarizationOptions(optionsDto);
 
@@ -118,14 +118,14 @@ export class SummarizationService {
    * @throws Error if the audio download fails.
    */
   async downloadAudio(videoUrl: string): Promise<string> {
-    const prefix = generateRandomSuffix();
-    const audioPath = join(this.DOWNLOAD_DIR, `${prefix}.${this.AUDIO_FORMAT}`);
+    const fileName = generateAudioFilename();
+    const audioPath = join(DOWNLOAD_DIR, `${fileName}.${AUDIO_FORMAT}`);
 
     try {
       console.log('Downloading audio...');
       await this.ytdlp(videoUrl, {
         extractAudio: true,
-        audioFormat: this.AUDIO_FORMAT,
+        audioFormat: AUDIO_FORMAT,
         output: audioPath,
         noCheckCertificates: true,
         noWarnings: true,
@@ -155,7 +155,7 @@ export class SummarizationService {
     audioPath: string,
     userApiKey?: string,
   ): Promise<string> {
-    const apiKey = getApiKey(userApiKey, this.defaultOpenAiApiKey);
+    const apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
     const openaiClient = new OpenAI({ apiKey });
 
     try {
@@ -186,19 +186,27 @@ export class SummarizationService {
     text: string,
     options?: SummarizationOptions,
     userApiKey?: string,
-  ): Promise<string> {
+  ) {
     const { length, format, listen } = getSummarizationOptions(options);
     const prompt = `Summarize the following text in a ${length} format, in ${format} style:\n\n${text}`;
 
     let apiKey: string;
+    let summary: string;
     if (options?.model === SummarizationModel.DEEPSEEK) {
-      apiKey = getApiKey(userApiKey, this.defaultDeepSeekApiKey);
-      return this.summarizeWithDeepSeek(apiKey, prompt);
+      apiKey = getApiKey(userApiKey, DEFAULT_DEEPSEEK_API_KEY);
+      summary = await  this.summarizeWithDeepSeek(apiKey, prompt);
     } else {
-      apiKey = getApiKey(userApiKey, this.defaultOpenAiApiKey);
-      return  this.summarizeWithOpenAi(apiKey, prompt);
+      apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
+      summary = await  this.summarizeWithOpenAi(apiKey, prompt);
+    }
+    
+    if (options?.listen) {
+      const openaiApiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
+      const audioFilePath = await this.convertTextToSpeech(summary, openaiApiKey);
+      return { summary, audioFilePath };
     }
 
+    return { summary };
   }
 
   async summarizeWithOpenAi(apiKey: string, prompt: string): Promise<string> {
@@ -260,6 +268,30 @@ export class SummarizationService {
     }
   }
 
+  async convertTextToSpeech(text: string, apiKey: string): Promise<string> {
+    const openai = new OpenAI({apiKey});
+
+    try {
+      console.log('Generating audio for the summary using OpenAI TTS-1 model...');
+
+      const mp3 = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: "alloy",
+        input: text,
+      });
+
+      const buffer = Buffer.from(await mp3.arrayBuffer());
+      const fileName = generateAudioFilename();
+      const audioFileName = `${fileName}.${AUDIO_FORMAT}`;
+      const audioFilePath = `${DOWNLOAD_DIR}/${audioFileName}`
+      await fsPromises.writeFile(audioFilePath, buffer);
+      return `${PUBLIC_DIR}/${audioFileName}`;
+    } catch (error) {
+      console.log("Error generating the audio: ", error.message);
+      throw new BadRequestException("Failed to generate audio");
+    }
+  }
+
   /**
    * Extracts text from different file formats.
    * @param file - The uploaded file (PDF, DOCX, or TXT).
@@ -286,5 +318,12 @@ export class SummarizationService {
           'Unsupported file format. Only PDF, TXT, and DOCX are allowed.',
         );
     }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  handleFileCleanup() {
+    console.log("Starting the cleanup");
+    cleanupOldFiles(DOWNLOAD_DIR, MAX_FILE_AGE);
+    console.log("Finished cleaning up old files.");
   }
 }
