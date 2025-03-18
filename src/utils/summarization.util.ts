@@ -26,3 +26,17 @@ export function getApiKey(userApiKey?: string, defaultApiKey?: string): string {
   if (defaultApiKey) return defaultApiKey;
   throw new BadRequestException('API key is required');
 }
+export function extractVideoId(url: string): string | null {
+  const patterns = [
+    /(?:v=|\/)([\w-]{11})(?:\?|&|\/|$)/,
+    /youtu\.be\/([\w-]{11})(?:\?|&|$)/,
+    /\/shorts\/([\w-]{11})(?:\?|&|$)/
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+
+  return null;
+}

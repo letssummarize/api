@@ -53,6 +53,9 @@ importers:
       youtube-dl-exec:
         specifier: ^3.0.19
         version: 3.0.19
+      youtube-transcript:
+        specifier: ^1.2.1
+        version: 1.2.1
       yt-dlp-exec:
         specifier: ^1.0.2
         version: 1.0.2
@@ -3998,6 +4001,10 @@ packages:
   youtube-dl-exec@3.0.19:
     resolution: {integrity: sha512-TJ44nbF7gPwPbd3tNGWxzhTLDdhvfvh9TGnVaAtt90vCxsRVXHubVT6kF6KYa2QFnMRJyjevbQB+H6DLtPaHHw==}
     engines: {node: '>= 18'}
+
+  youtube-transcript@1.2.1:
+    resolution: {integrity: sha512-TvEGkBaajKw+B6y91ziLuBLsa5cawgowou+Bk0ciGpjELDfAzSzTGXaZmeSSkUeknCPpEr/WGApOHDwV7V+Y9Q==}
+    engines: {node: '>=18.0.0'}
 
   yt-dlp-exec@1.0.2:
     resolution: {integrity: sha512-swKtruQmGBs+Xrxy0wCZ2FxCT167EpBYIWdj/klTzNB2HrHng/qFlKo/C0WVlopbww8/uMIGQR6grXQ2ObcrAw==}
@@ -8274,6 +8281,8 @@ snapshots:
       tinyspawn: 1.4.0
     transitivePeerDependencies:
       - supports-color
+
+  youtube-transcript@1.2.1: {}
 
   yt-dlp-exec@1.0.2:
     dependencies:

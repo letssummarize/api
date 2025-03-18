@@ -13,6 +13,7 @@ import { extractTextFromPdf, extractTextFromDocx, cleanupOldFiles } from 'src/ut
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
 import { SummarizationOptionsDto } from './dto/summarization-options.dto';
 import {
+  extractVideoId,
   getApiKey,
   getSummarizationOptions,
   isValidYouTubeUrl,
@@ -29,6 +30,7 @@ import {
 import { generateAudioFilename } from 'src/utils/files.util';
 import { SummarizationModel } from './enums/summarization-options.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { YoutubeTranscript } from 'youtube-transcript';
 
 @Injectable()
 export class SummarizationService {
@@ -37,6 +39,7 @@ export class SummarizationService {
     PATH_TO_YT_DLP || 'add-your-path-here',
   ); // Using custom binary
   
+  private readonly MAX_TOKENS = 15000;
 
   constructor() {
     if (!existsSync(DOWNLOAD_DIR)) {
@@ -45,12 +48,12 @@ export class SummarizationService {
   }
 
   /**
-   * Summarizes a YouTube video by downloading its audio, transcribing it,
-   * and generating a summary using GPT-4o.
-   * @param content - DTO containing the YouTube video URL.
-   * @param optionsDto - User-specified summarization options (length, format, etc.).
-   * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service).
-   * @returns The transcript and summary of the video.
+   * Summarizes a YouTube video using either direct transcript fetching or audio-based transcription.
+   * @param content - Contains the videoUrl to be summarized
+   * @param optionsDto - User-specified summarization options (length, format, etc.)
+   * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service)
+   * @returns An object containing the transcript and summary of the video
+   * @throws BadRequestException if the YouTube URL is invalid or if summarization fails
    */
   async summarizeYouTubeVideo(
     content: SummarizeVideoDto,
@@ -66,22 +69,74 @@ export class SummarizationService {
     const options = getSummarizationOptions(optionsDto);
 
     try {
-      console.log('Summarizing video:', videoUrl);
+      console.log('Fetching transcript for video:', videoUrl);
 
-      const audioPath = await this.downloadAudio(videoUrl);
-      console.log('Downloaded Audio Path:', audioPath);
-
-      const transcript = await this.transcribeAudio(audioPath, userApiKey);
-      console.log('Transcript:', transcript);
-
-      const summary = await this.summarizeText(transcript, options, userApiKey);
-      console.log('Summary:', summary);
-      
-
-      return { transcript, summary };
+      try {
+        const videoId = extractVideoId(videoUrl);
+        if (!videoId) {
+          return this.summarizeYouTubeVideoUsingAudio(
+            videoUrl,
+            options,
+            userApiKey,
+          );
+        }
+        const transcript = await this.fetchYouTubeTranscript(videoId);
+        const summary = await this.summarizeText(
+          transcript,
+          options,
+          userApiKey,
+        );
+        return { transcript, summary };
+      } catch (transcriptError) {
+        return this.summarizeYouTubeVideoUsingAudio(
+          videoUrl,
+          options,
+          userApiKey,
+        );
+      }
     } catch (error) {
       console.error('Error:', error.message);
       throw new BadRequestException(error.message);
+    }
+  }
+
+  private async fetchYouTubeTranscript(videoId: string): Promise<string> {
+    try {
+      const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+      const fullTranscript = transcriptItems
+        .map((item) => item.text.trim())
+        .filter((text) => text.length > 0)
+        .join(' ');
+
+      const words = fullTranscript.split(' ');
+      const safeLength = Math.floor(this.MAX_TOKENS / 4);
+      return words.slice(0, safeLength).join(' ');
+    } catch (error) {
+      throw new Error(
+        `Could not fetch transcript from YouTube: ${error.message}`,
+      );
+    }
+  }
+
+  private async summarizeYouTubeVideoUsingAudio(
+    videoUrl: string,
+    options: SummarizationOptions,
+    userApiKey?: string,
+  ) {
+    try {
+      console.log(
+        'Direct transcript fetch failed, falling back to audio download:',
+      );
+      const audioPath = await this.downloadAudio(videoUrl);
+      const transcript = await this.transcribeAudio(audioPath, userApiKey);
+      const summary = await this.summarizeText(transcript, options, userApiKey);
+      console.log('Summary:', summary);
+
+      return { transcript, summary };
+    } catch (error) {
+      throw new Error(
+        `Failed to summarize video using audio: ${error.message}`,
+      );
     }
   }
 
@@ -121,8 +176,9 @@ export class SummarizationService {
     const fileName = generateAudioFilename();
     const audioPath = join(DOWNLOAD_DIR, `${fileName}.${AUDIO_FORMAT}`);
 
+    const startTime = new Date();
     try {
-      console.log('Downloading audio...');
+      console.log(`Downloading audio... Started at ${startTime.toISOString()}`);
       await this.ytdlp(videoUrl, {
         extractAudio: true,
         audioFormat: AUDIO_FORMAT,
@@ -132,7 +188,11 @@ export class SummarizationService {
         preferFreeFormats: true,
       });
 
-      console.log('Audio downloaded:', audioPath);
+      const endTime = new Date();
+      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+      console.log(
+        `Downloaded audio: ${audioPath}. Finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+      );
 
       if (!existsSync(audioPath)) {
         throw new Error('Audio file was not created.');
@@ -140,7 +200,11 @@ export class SummarizationService {
 
       return audioPath;
     } catch (error) {
-      console.error('Error downloading audio:', error);
+      const failTime = new Date();
+      const duration = (failTime.getTime() - startTime.getTime()) / 1000;
+      console.error(
+        `Error downloading audio: ${error}. Finished at ${failTime.toISOString()}. Time taken: ${duration} seconds`,
+      );
       throw new Error('Failed to download audio');
     }
   }
@@ -157,9 +221,12 @@ export class SummarizationService {
   ): Promise<string> {
     const apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
     const openaiClient = new OpenAI({ apiKey });
+    const startTime = new Date();
 
     try {
-      console.log('Transcribing audio...');
+      console.log(
+        `Transcribing audio... Started at ${startTime.toISOString()}`,
+      );
       const fileStream = createReadStream(audioPath);
 
       const response = await openaiClient.audio.transcriptions.create({
@@ -169,8 +236,19 @@ export class SummarizationService {
         response_format: 'json',
       });
 
+      const endTime = new Date();
+      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+      console.log(
+        `Transcription finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+      );
+
       return response.text;
     } catch (error) {
+      const failTime = new Date();
+      const duration = (failTime.getTime() - startTime.getTime()) / 1000;
+      console.error(
+        `Transcription failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
+      );
       throw new Error(`Failed to transcribe audio: ${error.message}`);
     }
   }
@@ -211,7 +289,7 @@ export class SummarizationService {
 
   async summarizeWithOpenAi(apiKey: string, prompt: string): Promise<string> {
     const openai = new OpenAI({apiKey});
-
+    const startTime = new Date();
     try {
       console.log('Summarizing text with gpt-4o...');
       const response = await openai.chat.completions.create({
@@ -230,10 +308,21 @@ export class SummarizationService {
         max_tokens: 150,
       });
 
+      const endTime = new Date();
+      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+      console.log(
+        `Summarization finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+      );
+
       return (
         response.choices[0]?.message?.content || 'Could not generate a summary.'
       );
     } catch (error) {
+      const failTime = new Date();
+      const duration = (failTime.getTime() - startTime.getTime()) / 1000;
+      console.error(
+        `Summarization failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
+      );
       throw new Error(`Failed to summarize text: ${error.message}`);
     }
   }
@@ -267,6 +356,7 @@ export class SummarizationService {
       throw new Error(`Failed to summarize text: ${error.message}`);
     }
   }
+
 
   async convertTextToSpeech(text: string, apiKey: string): Promise<string> {
     const openai = new OpenAI({apiKey});
