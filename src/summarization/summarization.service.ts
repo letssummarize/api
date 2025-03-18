@@ -106,7 +106,7 @@ export class SummarizationService {
           }
 
           // Summarize the transcript if available
-          const { text, summary } = await this.summarizeText(
+          const { text, summary, audioFilePath } = await this.summarizeText(
             transcript,
             options,
             userApiKey,
@@ -118,6 +118,7 @@ export class SummarizationService {
             summary,
             transcript: text,
             videoMetadata: { ...vidMetadata },
+            ...(audioFilePath ? { audioFilePath } : {}),
           };
         } catch (transcriptError) {
           console.warn(
@@ -181,6 +182,7 @@ export class SummarizationService {
         summary,
         transcript,
         videoMetadata: { ...vidMetadata },
+        ...(audioPath ? { audioFilePath: audioPath } : {}),
       };
     } catch (error) {
       throw new Error(
@@ -315,7 +317,7 @@ export class SummarizationService {
     userApiKey?: string,
   ) {
     const { length, format, listen } = getSummarizationOptions(options);
-    
+
     validateSummarizationOptions(options as SummarizationOptions);
 
     let prompt: string;
@@ -341,10 +343,14 @@ export class SummarizationService {
         summary,
         openaiApiKey,
       );
-      return { text, summary, audioFilePath };
+      return {
+        summary,
+        text,
+        ...(audioFilePath ? { audioFilePath } : {}),
+      };
     }
 
-    return { text, summary };
+    return { summary, text };
   }
 
   async summarizeWithOpenAi(apiKey: string, prompt: string): Promise<string> {

@@ -10,7 +10,7 @@
 ### Summarize YouTube Video
 POST {{baseUrl}}/summarize/video
 Content-Type: application/json
-Authorization: Bearer {{deepseekKey}}
+Authorization: Bearer {{openaiKey}}
 
 {
     "content": {
@@ -20,7 +20,8 @@ Authorization: Bearer {{deepseekKey}}
       "length": "standard",
       "format": "default",
       "speed": "fast",
-      "model": "deepseek"
+      "model": "{{openaiKey}}",
+      "listen": true
     }
 }
 
@@ -35,7 +36,8 @@ Authorization: Bearer {{openaiKey}}
     },
     "options": {
       "length": "short",
-      "format": "bullet-points"
+      "format": "bullet-points",
+      "listen": true
     }
 }
 
