@@ -1,0 +1,16 @@
+@port = {{$dotenv TRANSCRIBE_API_PORT}}
+@baseUrl = http://localhost:{{port}}
+
+### Test API Health Check
+GET {{baseUrl}}
+
+### Upload Audio & Get Transcription
+POST {{baseUrl}}/transcribe/
+Content-Type: multipart/form-data; boundary=boundary123
+
+--boundary123
+Content-Disposition: form-data; name="file"; filename="example.mp3"
+Content-Type: audio/mpeg
+
+< ./media/example.mp3
+--boundary123--

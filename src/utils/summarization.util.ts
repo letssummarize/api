@@ -3,10 +3,10 @@ import { SummarizationOptionsDto } from '../summarization/dto/summarization-opti
 import {
   SummaryLength,
   SummaryFormat,
+  SummarizationSpeed,
+  SummarizationModel,
 } from '../summarization/enums/summarization-options.enum';
 import { SummarizationOptions } from '../summarization/interfaces/summarization-options.interface';
-import { readdirSync, unlinkSync } from 'fs';
-import { basename, join } from 'path';
 
 export function isValidYouTubeUrl(url: string): boolean {
   const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+/;
@@ -20,6 +20,8 @@ export function getSummarizationOptions(
     length: options?.length ?? SummaryLength.STANDARD,
     format: options?.format ?? SummaryFormat.NARRATIVE,
     listen: options?.listen ?? false,
+    model: options?.model ?? SummarizationModel.OPENAI,
+    speed: options?.speed ?? SummarizationSpeed.SLOW,
   };
 }
 
@@ -29,33 +31,80 @@ export function getApiKey(userApiKey?: string, defaultApiKey?: string): string {
   throw new BadRequestException('API key is required');
 }
 
-export async function cleanupFiles(
-  directory: string,
-  prefix: string,
-): Promise<void> {
+export function extractVideoId(url: string): string | null {
+  const patterns = [
+    /(?:v=|\/)([\w-]{11})(?:\?|&|\/|$)/,
+    /youtu\.be\/([\w-]{11})(?:\?|&|$)/,
+    /\/shorts\/([\w-]{11})(?:\?|&|$)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+
+  return null;
+}
+
+/**
+ * Extracts YouTube video metadata including thumbnail URL, title, and channel name
+ * @param url YouTube video URL
+ * @returns Promise with video metadata or null if extraction fails
+ */
+export async function extractYouTubeVideoMetadata(url: string): Promise<{
+  thumbnail: string | null;
+  title: string | null;
+  channelName: string | null;
+}> {
+  const emptyResult = {
+    thumbnail: null,
+    title: null,
+    channelName: null,
+  };
+
   try {
-    const files = await readdirSync(directory);
-    for (const file of files) {
-      if (file.startsWith(prefix)) {
-        const filePath = join(directory, file);
-        await unlinkSync(filePath);
-        console.log('Deleted file:', filePath);
-      }
-    }
+    const videoId = extractVideoId(url);
+    if (!videoId) return { ...emptyResult };
+
+    const oEmbedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+    const response = await fetch(oEmbedUrl);
+
+    if (!videoId) return { ...emptyResult };
+
+    const data = await response.json();
+    const title = (await data.title) || 'Unknown Title';
+    const channelName = data.author_name || 'Unknown Channel';
+    const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+    return {
+      thumbnail,
+      title,
+      channelName,
+    };
   } catch (error) {
-    console.error('Error cleaning up files:', error.message);
+    console.error('Error extracting YouTube video metadata:', error);
+    return { ...emptyResult };
   }
 }
 
-export function generateRandomSuffix(): string {
-  const date = new Date();
-  const dateString = date.toISOString().split('T')[0].replace(/-/g, '');
-  const randomString = Math.random().toString(36).substring(2, 10);
-  return `${dateString}_${randomString}`;
-}
-
-export function extractPrefixFromPath(filePath: string): string {
-  const filename = basename(filePath);
-  const prefix = filename.split('.').slice(0, -1).join('.');
-  return prefix;
+export function validateSummarizationOptions(
+  options: SummarizationOptions,
+): void {
+  console.log('received options: ', options)
+  if (options.length && !Object.values(SummaryLength).includes(options.length)) {
+    options.length = SummaryLength.STANDARD;
+  }
+  if (options.format && !Object.values(SummaryFormat).includes(options.format)) {
+    options.format = SummaryFormat.DEFAULT;
+  }
+  if (options.model && !Object.values(SummarizationModel).includes(options.model)) {
+    options.model = SummarizationModel.DEFAULT;
+  }
+  if (options.speed && !Object.values(SummarizationSpeed).includes(options.speed)) {
+    options.speed = SummarizationSpeed.DEFAULT;
+  }
+  if (typeof options.listen !== 'boolean') {
+    options.listen = false;
+  }
+  console.log('validated options: ', options)
 }
