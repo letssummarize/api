@@ -5,15 +5,20 @@ import {
 } from '@nestjs/common';
 import OpenAI from 'openai';
 import { existsSync, mkdirSync, createReadStream } from 'fs';
-import { promises as fsPromises} from 'fs'
+import { promises as fsPromises } from 'fs';
 import { extname, join } from 'path';
 import { create } from 'youtube-dl-exec';
 import { SummarizeVideoDto } from './dto/summarize-video.dto';
-import { extractTextFromPdf, extractTextFromDocx, cleanupOldFiles } from 'src/utils/files.util';
+import {
+  extractTextFromPdf,
+  extractTextFromDocx,
+  cleanupOldFiles,
+} from 'src/utils/files.util';
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
 import { SummarizationOptionsDto } from './dto/summarization-options.dto';
 import {
   extractVideoId,
+  extractYouTubeVideoMetadata,
   getApiKey,
   getSummarizationOptions,
   isValidYouTubeUrl,
@@ -28,17 +33,17 @@ import {
   MAX_FILE_AGE,
 } from 'src/utils/constants';
 import { generateAudioFilename } from 'src/utils/files.util';
-import { SummarizationModel, SummarizationSpeed } from './enums/summarization-options.enum';
+import {
+  SummarizationModel,
+  SummarizationSpeed,
+} from './enums/summarization-options.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { YoutubeTranscript } from 'youtube-transcript';
 
 @Injectable()
 export class SummarizationService {
+  private readonly ytdlp = create(PATH_TO_YT_DLP); // Using custom binary
 
-  private readonly ytdlp = create(
-    PATH_TO_YT_DLP,
-  ); // Using custom binary
-  
   private readonly MAX_TOKENS = 15000;
 
   constructor() {
@@ -61,49 +66,80 @@ export class SummarizationService {
     userApiKey?: string,
   ) {
     const { videoUrl } = content;
-  
+
     if (!isValidYouTubeUrl(videoUrl)) {
       throw new BadRequestException('Invalid YouTube URL');
     }
-  
+
     const options = getSummarizationOptions(optionsDto);
-  
+
     try {
       console.log('Fetching transcript for video:', videoUrl);
       if (options?.speed === SummarizationSpeed.FAST) {
         const videoId = extractVideoId(videoUrl);
-  
+
         if (!videoId) {
-          return this.summarizeYouTubeVideoUsingAudio(videoUrl, options, userApiKey);
+          return this.summarizeYouTubeVideoUsingAudio(
+            videoUrl,
+            options,
+            userApiKey,
+          );
         }
-  
+
         try {
           // Attempt to fetch the YouTube transcript
           const transcript = await this.fetchYouTubeTranscript(videoId);
-  
+
           // Check if a transcript exists
           if (!transcript || transcript.length === 0) {
-            console.log('There is no transcript for this video, falling back to audio processing...');
-            return this.summarizeYouTubeVideoUsingAudio(videoUrl, options, userApiKey);
+            console.log(
+              'There is no transcript for this video, falling back to audio processing...',
+            );
+            return this.summarizeYouTubeVideoUsingAudio(
+              videoUrl,
+              options,
+              userApiKey,
+            );
           }
-  
+
           // Summarize the transcript if available
-          const summary = await this.summarizeText(transcript, options, userApiKey);
-          return { transcript, summary };
+          const { text, summary } = await this.summarizeText(
+            transcript,
+            options,
+            userApiKey,
+          );
+          const vidMetadata = await extractYouTubeVideoMetadata(videoUrl);
+          console.log('vidMetadata:', vidMetadata);
+
+          return {
+            summary,
+            transcript: text,
+            videoMetadata: { ...vidMetadata },
+          };
         } catch (transcriptError) {
-          console.warn('Failed to fetch transcript, falling back to audio processing...');
-          return this.summarizeYouTubeVideoUsingAudio(videoUrl, options, userApiKey);
+          console.warn(
+            'Failed to fetch transcript, falling back to audio processing...',
+          );
+          return this.summarizeYouTubeVideoUsingAudio(
+            videoUrl,
+            options,
+            userApiKey,
+          );
         }
       }
-  
-      // Default to slow mode 
-      return this.summarizeYouTubeVideoUsingAudio(videoUrl, options, userApiKey);
+
+      // Default to slow mode
+      return this.summarizeYouTubeVideoUsingAudio(
+        videoUrl,
+        options,
+        userApiKey,
+      );
     } catch (error) {
       console.error('Error:', error.message);
       throw new BadRequestException(error.message);
     }
   }
-  
+
   private async fetchYouTubeTranscript(videoId: string): Promise<string> {
     try {
       const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
@@ -135,8 +171,14 @@ export class SummarizationService {
       const transcript = await this.transcribeAudio(audioPath, userApiKey);
       const summary = await this.summarizeText(transcript, options, userApiKey);
       console.log('Summary:', summary);
+      const vidMetadata = await extractYouTubeVideoMetadata(videoUrl);
+      console.log('vidMetadata:', vidMetadata);
 
-      return { transcript, summary };
+      return {
+        summary,
+        transcript,
+        videoMetadata: { ...vidMetadata },
+      };
     } catch (error) {
       throw new Error(
         `Failed to summarize video using audio: ${error.message}`,
@@ -276,23 +318,26 @@ export class SummarizationService {
     let summary: string;
     if (options?.model === SummarizationModel.DEEPSEEK) {
       apiKey = getApiKey(userApiKey, DEFAULT_DEEPSEEK_API_KEY);
-      summary = await  this.summarizeWithDeepSeek(apiKey, prompt);
+      summary = await this.summarizeWithDeepSeek(apiKey, prompt);
     } else {
       apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
-      summary = await  this.summarizeWithOpenAi(apiKey, prompt);
-    }
-    
-    if (options?.listen) {
-      const openaiApiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
-      const audioFilePath = await this.convertTextToSpeech(summary, openaiApiKey);
-      return { summary, audioFilePath };
+      summary = await this.summarizeWithOpenAi(apiKey, prompt);
     }
 
-    return { summary };
+    if (options?.listen) {
+      const openaiApiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
+      const audioFilePath = await this.convertTextToSpeech(
+        summary,
+        openaiApiKey,
+      );
+      return { text, summary, audioFilePath };
+    }
+
+    return { text, summary };
   }
 
   async summarizeWithOpenAi(apiKey: string, prompt: string): Promise<string> {
-    const openai = new OpenAI({apiKey});
+    const openai = new OpenAI({ apiKey });
     const startTime = new Date();
     try {
       console.log('Summarizing text with gpt-4o...');
@@ -361,28 +406,29 @@ export class SummarizationService {
     }
   }
 
-
   async convertTextToSpeech(text: string, apiKey: string): Promise<string> {
-    const openai = new OpenAI({apiKey});
+    const openai = new OpenAI({ apiKey });
 
     try {
-      console.log('Generating audio for the summary using OpenAI TTS-1 model...');
+      console.log(
+        'Generating audio for the summary using OpenAI TTS-1 model...',
+      );
 
       const mp3 = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "alloy",
+        model: 'tts-1',
+        voice: 'alloy',
         input: text,
       });
 
       const buffer = Buffer.from(await mp3.arrayBuffer());
       const fileName = generateAudioFilename();
       const audioFileName = `${fileName}.${AUDIO_FORMAT}`;
-      const audioFilePath = `${DOWNLOAD_DIR}/${audioFileName}`
+      const audioFilePath = `${DOWNLOAD_DIR}/${audioFileName}`;
       await fsPromises.writeFile(audioFilePath, buffer);
       return `${PUBLIC_DIR}/${audioFileName}`;
     } catch (error) {
-      console.log("Error generating the audio: ", error.message);
-      throw new BadRequestException("Failed to generate audio");
+      console.log('Error generating the audio: ', error.message);
+      throw new BadRequestException('Failed to generate audio');
     }
   }
 
@@ -416,8 +462,8 @@ export class SummarizationService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   handleFileCleanup() {
-    console.log("Starting the cleanup");
+    console.log('Starting the cleanup');
     cleanupOldFiles(DOWNLOAD_DIR, MAX_FILE_AGE);
-    console.log("Finished cleaning up old files.");
+    console.log('Finished cleaning up old files.');
   }
 }

@@ -34,7 +34,7 @@ export class SummarizationController {
 
     const summary = await this.summarizationService.summarizeYouTubeVideo(content, options, userApiKey);
 
-    return { summary };
+    return { ...summary };
   }
 
   @Post('file')
@@ -49,7 +49,8 @@ export class SummarizationController {
     @Body() options?: SummarizationOptionsDto,
   ) {
     const userApiKey = (req as any).apiKey;
-    return this.summarizationService.summarizeFile(file, options, userApiKey);
+    const summary = await this.summarizationService.summarizeFile(file, options, userApiKey);
+    return { ...summary };
   }
 
   @Post('text')
@@ -60,7 +61,8 @@ export class SummarizationController {
   ) {
     const { content, options } = body;
     const userApiKey = (req as any).apiKey;
-    return this.summarizationService.summarizeText(content.text, options, userApiKey);
+    const summary = await this.summarizationService.summarizeText(content.text, options, userApiKey);
+    return { ...summary };
   }
 
   @Get()

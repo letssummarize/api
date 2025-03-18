@@ -30,11 +30,12 @@ export function getApiKey(userApiKey?: string, defaultApiKey?: string): string {
   if (defaultApiKey) return defaultApiKey;
   throw new BadRequestException('API key is required');
 }
+
 export function extractVideoId(url: string): string | null {
   const patterns = [
     /(?:v=|\/)([\w-]{11})(?:\?|&|\/|$)/,
     /youtu\.be\/([\w-]{11})(?:\?|&|$)/,
-    /\/shorts\/([\w-]{11})(?:\?|&|$)/
+    /\/shorts\/([\w-]{11})(?:\?|&|$)/,
   ];
 
   for (const pattern of patterns) {
@@ -43,4 +44,45 @@ export function extractVideoId(url: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * Extracts YouTube video metadata including thumbnail URL, title, and channel name
+ * @param url YouTube video URL
+ * @returns Promise with video metadata or null if extraction fails
+ */
+export async function extractYouTubeVideoMetadata(url: string): Promise<{
+  thumbnail: string | null;
+  title: string | null;
+  channelName: string | null;
+}> {
+  const emptyResult = {
+    thumbnail: null,
+    title: null,
+    channelName: null,
+  };
+
+  try {
+    const videoId = extractVideoId(url);
+    if (!videoId) return { ...emptyResult };
+
+    const oEmbedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+    const response = await fetch(oEmbedUrl);
+
+    if (!videoId) return { ...emptyResult };
+
+    const data = await response.json();
+    const title = (await data.title) || 'Unknown Title';
+    const channelName = data.author_name || 'Unknown Channel';
+    const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+    return {
+      thumbnail,
+      title,
+      channelName,
+    };
+  } catch (error) {
+    console.error('Error extracting YouTube video metadata:', error);
+    return { ...emptyResult };
+  }
 }
