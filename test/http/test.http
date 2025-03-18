@@ -20,7 +20,7 @@ Authorization: Bearer {{openaiKey}}
       "length": "standard",
       "format": "default",
       "speed": "fast",
-      "model": "{{openaiKey}}",
+      "model": "openai",
       "listen": true
     }
 }

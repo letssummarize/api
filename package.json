@@ -20,11 +20,13 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.758.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^5.0.1",
     "@nestjs/serve-static": "^5.0.3",
+    "aws-sdk": "^2.1692.0",
     "class-validator": "^0.14.1",
     "dotenv": "^16.4.7",
     "fluent-ffmpeg": "^2.1.3",

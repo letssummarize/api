@@ -4,7 +4,7 @@ import {
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import OpenAI from 'openai';
-import { existsSync, mkdirSync, createReadStream } from 'fs';
+import { existsSync, mkdirSync, createReadStream, readFileSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { extname, join } from 'path';
 import { create } from 'youtube-dl-exec';
@@ -41,6 +41,7 @@ import {
 } from './enums/summarization-options.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { YoutubeTranscript } from 'youtube-transcript';
+import { uploadAudioToS3 } from 'src/utils/s3.util';
 
 @Injectable()
 export class SummarizationService {
@@ -442,7 +443,19 @@ export class SummarizationService {
       const audioFileName = `${fileName}.${AUDIO_FORMAT}`;
       const audioFilePath = `${DOWNLOAD_DIR}/${audioFileName}`;
       await fsPromises.writeFile(audioFilePath, buffer);
-      return `${PUBLIC_DIR}/${audioFileName}`;
+      
+      if (process.env.USE_S3 === 'true') {
+        try {
+          const s3Url = await uploadAudioToS3(audioFilePath, audioFileName);
+          console.log(`Audio file uploaded to S3: ${s3Url}`);
+          return s3Url;
+        } catch (s3Error) {
+          console.error('S3 upload failed, falling back to local file:', s3Error);
+          return `${PUBLIC_DIR}/${audioFileName}`;
+        }
+      } else {
+        return `${PUBLIC_DIR}/${audioFileName}`;
+      }
     } catch (error) {
       console.log('Error generating the audio: ', error.message);
       throw new BadRequestException('Failed to generate audio');
