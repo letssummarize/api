@@ -22,6 +22,7 @@ import {
   getApiKey,
   getSummarizationOptions,
   isValidYouTubeUrl,
+  validateSummarizationOptions,
 } from 'src/utils/summarization.util';
 import {
   DEFAULT_OPENAI_API_KEY,
@@ -36,6 +37,7 @@ import { generateAudioFilename } from 'src/utils/files.util';
 import {
   SummarizationModel,
   SummarizationSpeed,
+  SummaryFormat,
 } from './enums/summarization-options.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { YoutubeTranscript } from 'youtube-transcript';
@@ -75,6 +77,7 @@ export class SummarizationService {
 
     try {
       console.log('Fetching transcript for video:', videoUrl);
+      console.log('options ', options);
       if (options?.speed === SummarizationSpeed.FAST) {
         const videoId = extractVideoId(videoUrl);
 
@@ -312,7 +315,15 @@ export class SummarizationService {
     userApiKey?: string,
   ) {
     const { length, format, listen } = getSummarizationOptions(options);
-    const prompt = `Summarize the following text in a ${length} format, in ${format} style:\n\n${text}`;
+    
+    validateSummarizationOptions(options as SummarizationOptions);
+
+    let prompt: string;
+    if (options?.format === SummaryFormat.DEFAULT) {
+      prompt = `Summarize the following text in a ${length} format:\n\n${text}`;
+    } else {
+      prompt = `Summarize the following text in a ${length} format, in ${format} style:\n\n${text}`;
+    }
 
     let apiKey: string;
     let summary: string;

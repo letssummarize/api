@@ -86,3 +86,25 @@ export async function extractYouTubeVideoMetadata(url: string): Promise<{
     return { ...emptyResult };
   }
 }
+
+export function validateSummarizationOptions(
+  options: SummarizationOptions,
+): void {
+  console.log('received options: ', options)
+  if (options.length && !Object.values(SummaryLength).includes(options.length)) {
+    options.length = SummaryLength.STANDARD;
+  }
+  if (options.format && !Object.values(SummaryFormat).includes(options.format)) {
+    options.format = SummaryFormat.DEFAULT;
+  }
+  if (options.model && !Object.values(SummarizationModel).includes(options.model)) {
+    options.model = SummarizationModel.DEFAULT;
+  }
+  if (options.speed && !Object.values(SummarizationSpeed).includes(options.speed)) {
+    options.speed = SummarizationSpeed.DEFAULT;
+  }
+  if (typeof options.listen !== 'boolean') {
+    options.listen = false;
+  }
+  console.log('validated options: ', options)
+}

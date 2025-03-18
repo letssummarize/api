@@ -17,8 +17,8 @@ Authorization: Bearer {{deepseekKey}}
       "videoUrl": "{{ytVideo}}"
     },
     "options": {
-      "length": "short",
-      "format": "bullet-points",
+      "length": "standard",
+      "format": "default",
       "speed": "fast",
       "model": "deepseek"
     }
