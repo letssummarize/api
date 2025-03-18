@@ -3,6 +3,8 @@ import { SummarizationOptionsDto } from '../summarization/dto/summarization-opti
 import {
   SummaryLength,
   SummaryFormat,
+  SummarizationSpeed,
+  SummarizationModel,
 } from '../summarization/enums/summarization-options.enum';
 import { SummarizationOptions } from '../summarization/interfaces/summarization-options.interface';
 
@@ -18,6 +20,8 @@ export function getSummarizationOptions(
     length: options?.length ?? SummaryLength.STANDARD,
     format: options?.format ?? SummaryFormat.NARRATIVE,
     listen: options?.listen ?? false,
+    model: options?.model ?? SummarizationModel.OPENAI,
+    speed: options?.speed ?? SummarizationSpeed.SLOW,
   };
 }
 

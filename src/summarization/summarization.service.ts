@@ -28,7 +28,7 @@ import {
   MAX_FILE_AGE,
 } from 'src/utils/constants';
 import { generateAudioFilename } from 'src/utils/files.util';
-import { SummarizationModel } from './enums/summarization-options.enum';
+import { SummarizationModel, SummarizationSpeed } from './enums/summarization-options.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { YoutubeTranscript } from 'youtube-transcript';
 
@@ -36,7 +36,7 @@ import { YoutubeTranscript } from 'youtube-transcript';
 export class SummarizationService {
 
   private readonly ytdlp = create(
-    PATH_TO_YT_DLP || 'add-your-path-here',
+    PATH_TO_YT_DLP,
   ); // Using custom binary
   
   private readonly MAX_TOKENS = 15000;
@@ -61,45 +61,49 @@ export class SummarizationService {
     userApiKey?: string,
   ) {
     const { videoUrl } = content;
-
+  
     if (!isValidYouTubeUrl(videoUrl)) {
       throw new BadRequestException('Invalid YouTube URL');
     }
-
+  
     const options = getSummarizationOptions(optionsDto);
-
+  
     try {
       console.log('Fetching transcript for video:', videoUrl);
-
-      try {
+      if (options?.speed === SummarizationSpeed.FAST) {
         const videoId = extractVideoId(videoUrl);
+  
         if (!videoId) {
-          return this.summarizeYouTubeVideoUsingAudio(
-            videoUrl,
-            options,
-            userApiKey,
-          );
+          return this.summarizeYouTubeVideoUsingAudio(videoUrl, options, userApiKey);
         }
-        const transcript = await this.fetchYouTubeTranscript(videoId);
-        const summary = await this.summarizeText(
-          transcript,
-          options,
-          userApiKey,
-        );
-        return { transcript, summary };
-      } catch (transcriptError) {
-        return this.summarizeYouTubeVideoUsingAudio(
-          videoUrl,
-          options,
-          userApiKey,
-        );
+  
+        try {
+          // Attempt to fetch the YouTube transcript
+          const transcript = await this.fetchYouTubeTranscript(videoId);
+  
+          // Check if a transcript exists
+          if (!transcript || transcript.length === 0) {
+            console.log('There is no transcript for this video, falling back to audio processing...');
+            return this.summarizeYouTubeVideoUsingAudio(videoUrl, options, userApiKey);
+          }
+  
+          // Summarize the transcript if available
+          const summary = await this.summarizeText(transcript, options, userApiKey);
+          return { transcript, summary };
+        } catch (transcriptError) {
+          console.warn('Failed to fetch transcript, falling back to audio processing...');
+          return this.summarizeYouTubeVideoUsingAudio(videoUrl, options, userApiKey);
+        }
       }
+  
+      // Default to slow mode 
+      return this.summarizeYouTubeVideoUsingAudio(videoUrl, options, userApiKey);
     } catch (error) {
       console.error('Error:', error.message);
       throw new BadRequestException(error.message);
     }
   }
-
+  
   private async fetchYouTubeTranscript(videoId: string): Promise<string> {
     try {
       const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
@@ -120,7 +124,7 @@ export class SummarizationService {
 
   private async summarizeYouTubeVideoUsingAudio(
     videoUrl: string,
-    options: SummarizationOptions,
+    options?: SummarizationOptions,
     userApiKey?: string,
   ) {
     try {

@@ -14,3 +14,8 @@ export enum SummarizationModel {
     OPENAI = 'openai',
     DEEPSEEK = 'deepseek',
 }
+
+export enum SummarizationSpeed {
+    FAST = 'fast',
+    SLOW = 'slow',
+}
