@@ -1,5 +1,5 @@
 import { IsOptional, IsEnum, IsBoolean } from "class-validator";
-import { SummarizationModel, SummarizationSpeed, SummaryFormat, SummaryLength } from "../enums/summarization-options.enum";
+import { SummarizationLanguage, SummarizationModel, SummarizationSpeed, SummaryFormat, SummaryLength } from "../enums/summarization-options.enum";
 
 export class SummarizationOptionsDto {
     @IsOptional()
@@ -21,5 +21,9 @@ export class SummarizationOptionsDto {
     @IsOptional()
     @IsEnum(SummarizationSpeed)
     speed?: SummarizationSpeed;
+
+    @IsOptional()
+    @IsEnum(SummarizationLanguage)
+    lang?: SummarizationLanguage;
   }
   

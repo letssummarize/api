@@ -1,4 +1,4 @@
-import { SummarizationModel, SummarizationSpeed, SummaryFormat, SummaryLength } from "../enums/summarization-options.enum";
+import { SummarizationLanguage, SummarizationModel, SummarizationSpeed, SummaryFormat, SummaryLength } from "../enums/summarization-options.enum";
 
 export interface SummarizationOptions {
     length?: SummaryLength,
@@ -6,4 +6,5 @@ export interface SummarizationOptions {
     model?: SummarizationModel,
     listen?: boolean,
     speed?: SummarizationSpeed,
+    lang?: SummarizationLanguage,
 }

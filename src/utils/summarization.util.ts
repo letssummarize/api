@@ -5,6 +5,7 @@ import {
   SummaryFormat,
   SummarizationSpeed,
   SummarizationModel,
+  SummarizationLanguage,
 } from '../summarization/enums/summarization-options.enum';
 import { SummarizationOptions } from '../summarization/interfaces/summarization-options.interface';
 
@@ -18,10 +19,11 @@ export function getSummarizationOptions(
 ): SummarizationOptions {
   return {
     length: options?.length ?? SummaryLength.STANDARD,
-    format: options?.format ?? SummaryFormat.NARRATIVE,
+    format: options?.format ?? SummaryFormat.DEFAULT,
     listen: options?.listen ?? false,
-    model: options?.model ?? SummarizationModel.OPENAI,
-    speed: options?.speed ?? SummarizationSpeed.SLOW,
+    model: options?.model ?? SummarizationModel.DEFAULT,
+    speed: options?.speed ?? SummarizationSpeed.DEFAULT,
+    lang: options?.lang ?? SummarizationLanguage.DEFAULT,
   };
 }
 

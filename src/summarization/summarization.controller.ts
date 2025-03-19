@@ -27,7 +27,7 @@ export class SummarizationController {
   async summarizeYouTube(
     @Req() req: Request,
     @Body()
-    body: { content: SummarizeVideoDto; options: SummarizationOptionsDto },
+    body: { content: SummarizeVideoDto; options?: SummarizationOptionsDto },
   ) {
     const { content, options } = body;
     const userApiKey = (req as any).apiKey;

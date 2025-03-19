@@ -35,6 +35,7 @@ import {
 } from 'src/utils/constants';
 import { generateAudioFilename } from 'src/utils/files.util';
 import {
+  SummarizationLanguage,
   SummarizationModel,
   SummarizationSpeed,
   SummaryFormat,
@@ -308,19 +309,19 @@ export class SummarizationService {
     userApiKey?: string,
   ) {
 
-    const { length, format } = getSummarizationOptions(options);
+    const { length, format, lang } = getSummarizationOptions(options);
 
     if (userApiKey && options?.listen && options.model !== SummarizationModel.OPENAI) {
       throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
     }
 
-    // validateSummarizationOptions(options as SummarizationOptions);
-
     let prompt: string;
-    if (options?.format === SummaryFormat.DEFAULT) {
-      prompt = `Summarize the following text in a ${length} format:\n\n${text}`;
+    if (options?.format === SummaryFormat.DEFAULT && options?.lang === SummarizationLanguage.DEFAULT) {
+      prompt = `Summarize the following text in a ${length} length:\n\n${text}`;
+    } else if (options?.format === SummaryFormat.DEFAULT){
+      prompt = `Summarize the following text in a ${length} lenght, in ${lang}:\n\n${text}`;
     } else {
-      prompt = `Summarize the following text in a ${length} format, in ${format} style:\n\n${text}`;
+      prompt = `Summarize the following text in a ${length} lenght, in ${format} style in ${lang}:\n\n${text}`;
     }
 
     let apiKey: string;
