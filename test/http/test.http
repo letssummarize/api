@@ -1,5 +1,6 @@
 @openaiKey = {{$dotenv OPENAI_API_KEY}}
 @deepseekKey = {{$dotenv DEEPSEEK_API_KEY}}
+@allowedOrigin = {{$dotenv ALLOWED_ORIGIN}}
 @baseUrl = http://localhost:3000
 @ytVideo = https://www.youtube.com/watch?v=O8ivm7403rk&t=9s
 
@@ -10,36 +11,37 @@
 ### Summarize YouTube Video
 POST {{baseUrl}}/summarize/video
 Content-Type: application/json
-Authorization: Bearer {{openaiKey}}
+Origin: {{allowedOrigin}}
 
 {
     "content": {
       "videoUrl": "{{ytVideo}}"
     },
     "options": {
-      "length": "standard",
-      "format": "bullet-points",
+      "length": "comprehensive",
+      "format": "default",
       "speed": "fast",
       "model": "deepseek",
       "listen": true,
-      "lang": "arabic"
+      "customInstructions": "use tables and add your opinion in the end",
+      "lang": "english"
     }
 }
 
 ### Summarize Text
 POST {{baseUrl}}/summarize/text
 Content-Type: application/json
-Authorization: Bearer {{deepseekKey}}
+Origin: {{allowedOrigin}}
 
 {
     "content": {
       "text": "{{text}}"
     },
     "options": {
-      "length": "short",
+      "length": "brief",
       "format": "bullet-points",
       "model": "deepseek",
-      "listen": true
+      "listen": false
     }
 }
 
@@ -47,6 +49,7 @@ Authorization: Bearer {{deepseekKey}}
 POST {{baseUrl}}/summarize/file
 Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
 Authorization: Bearer {{openaiKey}}
+Origin: {{allowedOrigin}}
 
 ------WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="file"; filename="example.pdf"

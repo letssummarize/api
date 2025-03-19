@@ -5,6 +5,9 @@ config()
 export const DEFAULT_OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 export const DEFAULT_DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 
+export const OPENAI_MAX_TOKENS: number = Number(process.env.OPENAI_MAX_TOKENS) || 300;
+export const DEEPSEEK_MAX_TOKENS: number = Number(process.env.DEEPSEEK_MAX_TOKENS) || 1000;
+
 export const PATH_TO_YT_DLP = process.env.PATH_TO_YT_DLP || 'add-your-path-here';
 
 export const DOWNLOAD_DIR = join(process.cwd(), 'downloads');
