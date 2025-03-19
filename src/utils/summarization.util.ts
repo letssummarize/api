@@ -93,21 +93,57 @@ export async function extractYouTubeVideoMetadata(url: string): Promise<{
 export function validateSummarizationOptions(
   options: SummarizationOptions,
 ): void {
-  console.log('received options: ', options)
-  if (options.length && !Object.values(SummaryLength).includes(options.length)) {
+  console.log('received options: ', options);
+  if (
+    options.length &&
+    !Object.values(SummaryLength).includes(options.length)
+  ) {
     options.length = SummaryLength.STANDARD;
   }
-  if (options.format && !Object.values(SummaryFormat).includes(options.format)) {
+  if (
+    options.format &&
+    !Object.values(SummaryFormat).includes(options.format)
+  ) {
     options.format = SummaryFormat.DEFAULT;
   }
-  if (options.model && !Object.values(SummarizationModel).includes(options.model)) {
+  if (
+    options.model &&
+    !Object.values(SummarizationModel).includes(options.model)
+  ) {
     options.model = SummarizationModel.DEFAULT;
   }
-  if (options.speed && !Object.values(SummarizationSpeed).includes(options.speed)) {
+  if (
+    options.speed &&
+    !Object.values(SummarizationSpeed).includes(options.speed)
+  ) {
     options.speed = SummarizationSpeed.DEFAULT;
   }
   if (typeof options.listen !== 'boolean') {
     options.listen = false;
   }
-  console.log('validated options: ', options)
+  console.log('validated options: ', options);
+}
+
+export function preparePrompt(options: SummarizationOptions, text: string) {
+  const { length, format, lang } = getSummarizationOptions(options);
+  let prompt: string;
+
+  if (
+    options?.format === SummaryFormat.DEFAULT &&
+    options?.lang === SummarizationLanguage.DEFAULT
+  ) {
+    prompt = `Summarize the following text in a ${length} length. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
+  } else if (options?.format === SummaryFormat.DEFAULT) {
+    prompt = `Summarize the following text in a ${length} length, in ${lang}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
+  } else {
+    prompt = `Summarize the following text in a ${length} length, in ${format} style in ${lang}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
+  }
+
+  if (options?.customInstructions) {
+    prompt += `\n\nSpecial requirements: ${options.customInstructions}`;
+  }
+
+  prompt += `\n\nText to summarize:\n${text}`;
+
+  return prompt;
 }

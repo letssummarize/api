@@ -23,6 +23,7 @@ import {
   getApiKey,
   getSummarizationOptions,
   isValidYouTubeUrl,
+  preparePrompt,
   validateSummarizationOptions,
 } from 'src/utils/summarization.util';
 import {
@@ -44,7 +45,10 @@ import {
   SummaryFormat,
 } from './enums/summarization-options.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { YoutubeTranscript, YoutubeTranscriptNotAvailableError } from 'youtube-transcript';
+import {
+  YoutubeTranscript,
+  YoutubeTranscriptNotAvailableError,
+} from 'youtube-transcript';
 import { uploadAudioToS3 } from 'src/utils/s3.util';
 
 @Injectable()
@@ -80,8 +84,14 @@ export class SummarizationService {
 
     const options = getSummarizationOptions(optionsDto);
 
-    if (userApiKey && options?.model !== SummarizationModel.OPENAI && options?.speed === SummarizationSpeed.SLOW) {
-      throw new BadRequestException("Slow mode is only supported with OpenAI. Please select OpenAI as the summarization model.")
+    if (
+      userApiKey &&
+      options?.model !== SummarizationModel.OPENAI &&
+      options?.speed === SummarizationSpeed.SLOW
+    ) {
+      throw new BadRequestException(
+        'Slow mode is only supported with OpenAI. Please select OpenAI as the summarization model.',
+      );
     }
 
     try {
@@ -119,16 +129,20 @@ export class SummarizationService {
           };
         } catch (error) {
           if (error.message.includes('401')) {
-            throw new BadRequestException("The api key you provided is invalid")
+            throw new BadRequestException(
+              'The api key you provided is invalid',
+            );
           }
-          if(error instanceof YoutubeTranscriptNotAvailableError) {
+          if (error instanceof YoutubeTranscriptNotAvailableError) {
             throw new BadRequestException(
               'This video does not have a YouTube transcript. Please use SLOW mode instead.',
             );
           } else {
-            throw new BadRequestException("There is a problem with network connection")
+            console.error("error ", error)
+            throw new BadRequestException(
+              'There is a problem with network connection',
+            );
           }
-          
         }
       }
 
@@ -316,25 +330,17 @@ export class SummarizationService {
     options?: SummarizationOptions,
     userApiKey?: string,
   ) {
-
-    const { length, format, lang } = getSummarizationOptions(options);
-
-    if (userApiKey && options?.listen && options.model !== SummarizationModel.OPENAI) {
-      throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
+    if (
+      userApiKey &&
+      options?.listen &&
+      options.model !== SummarizationModel.OPENAI
+    ) {
+      throw new BadRequestException(
+        'Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.',
+      );
     }
 
-    let prompt: string;
-    if (options?.format === SummaryFormat.DEFAULT && options?.lang === SummarizationLanguage.DEFAULT) {
-      prompt = `Summarize the following text in a ${length} length:\n\n${text}`;
-    } else if (options?.format === SummaryFormat.DEFAULT) {
-      prompt = `Summarize the following text in a ${length} lenght, in ${lang}:\n\n${text}`;
-    } else {
-      prompt = `Summarize the following text in a ${length} lenght, in ${format} style in ${lang}:\n\n${text}`;
-    }
-
-    if (options?.customInstructions) {
-      prompt += `\n\nAdditional Instructions: ${options.customInstructions}`;
-    }
+    const prompt = preparePrompt(options as SummarizationOptions, text);
 
     console.log(prompt);
 
@@ -350,21 +356,21 @@ export class SummarizationService {
 
     if (options?.listen) {
       const openaiApiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
-      console.log("openaiApiKey is: ", openaiApiKey)
+      console.log('openaiApiKey is: ', openaiApiKey);
 
       const audioFilePath = await this.convertTextToSpeech(
         summary,
         openaiApiKey,
       );
-      console.log("summary 1 ", summary)
+      console.log('summary 1 ', summary);
       return {
         summary,
         text,
         ...(audioFilePath ? { audioFilePath } : {}),
       };
     }
-    
-    console.log("summary 2 ", summary)
+
+    console.log('summary 2 ', summary);
     return { summary, text };
   }
 
@@ -379,7 +385,7 @@ export class SummarizationService {
           {
             role: 'system',
             content:
-              'You are a summarization expert who extracts key details from long texts.',
+              'You are a summarization expert who extracts key details from long texts. Provide well-structured summaries that capture the essence of the content while maintaining readability and coherence.',
           },
           {
             role: 'user',
@@ -421,7 +427,7 @@ export class SummarizationService {
           {
             role: 'system',
             content:
-              'You are a summarization expert who extracts key details from long texts.',
+              'You are a summarization expert who extracts key details from long texts. Provide well-structured summaries that capture the essence of the content while maintaining readability and coherence.',
           },
           {
             role: 'user',
@@ -445,7 +451,7 @@ export class SummarizationService {
       console.log(
         'Generating audio for the summary using OpenAI TTS-1 model...',
       );
-
+      console.log('convertTextToSpeech apiKey: ', apiKey);
       const mp3 = await openai.audio.speech.create({
         model: 'tts-1',
         voice: 'alloy',
@@ -457,14 +463,17 @@ export class SummarizationService {
       const audioFileName = `${fileName}.${AUDIO_FORMAT}`;
       const audioFilePath = `${DOWNLOAD_DIR}/${audioFileName}`;
       await fsPromises.writeFile(audioFilePath, buffer);
-
+      
       if (process.env.USE_S3 === 'true') {
         try {
           const s3Url = await uploadAudioToS3(audioFilePath, audioFileName);
           console.log(`Audio file uploaded to S3: ${s3Url}`);
           return s3Url;
         } catch (s3Error) {
-          console.error('S3 upload failed, falling back to local file:', s3Error);
+          console.error(
+            'S3 upload failed, falling back to local file:',
+            s3Error,
+          );
           return `${PUBLIC_DIR}/${audioFileName}`;
         }
       } else {
