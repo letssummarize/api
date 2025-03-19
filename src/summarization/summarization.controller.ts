@@ -26,10 +26,9 @@ export class SummarizationController {
   @Post('video')
   async summarizeYouTube(
     @Req() req: Request,
-    @Body()
-    body: { content: SummarizeVideoDto; options?: SummarizationOptionsDto },
+    @Body('content') content: SummarizeVideoDto,
+    @Body('options') options?: SummarizationOptionsDto,
   ) {
-    const { content, options } = body;
     const userApiKey = (req as any).apiKey;
 
     const summary = await this.summarizationService.summarizeYouTubeVideo(content, options, userApiKey);
@@ -46,7 +45,7 @@ export class SummarizationController {
   async summarizeFile(
     @UploadedFile(FILE_VALIDATOR_PIPE) file: Express.Multer.File,
     @Req() req: Request,
-    @Body() options?: SummarizationOptionsDto,
+    @Body('options') options?: SummarizationOptionsDto,
   ) {
     const userApiKey = (req as any).apiKey;
     const summary = await this.summarizationService.summarizeFile(file, options, userApiKey);
@@ -56,10 +55,9 @@ export class SummarizationController {
   @Post('text')
   async summarizeText(
     @Req() req: Request,
-    @Body()
-    body: { content: SummarizeTextDto; options: SummarizationOptionsDto },
+    @Body('content') content: SummarizeTextDto,
+    @Body('options') options?: SummarizationOptionsDto,
   ) {
-    const { content, options } = body;
     const userApiKey = (req as any).apiKey;
     const summary = await this.summarizationService.summarizeText(content.text, options, userApiKey);
     return { ...summary };
