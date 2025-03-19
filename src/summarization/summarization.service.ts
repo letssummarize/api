@@ -316,8 +316,6 @@ export class SummarizationService {
   ) {
 
     const { length, format, lang } = getSummarizationOptions(options);
-    console.log('DEFAULT_OPENAI_API_KEY', DEFAULT_OPENAI_API_KEY);
-    console.log('DEFAULT_DEEPSEEK_API_KEY', DEFAULT_DEEPSEEK_API_KEY);
 
     if (userApiKey && options?.listen && options.model !== SummarizationModel.OPENAI) {
       throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
@@ -331,6 +329,12 @@ export class SummarizationService {
     } else {
       prompt = `Summarize the following text in a ${length} lenght, in ${format} style in ${lang}:\n\n${text}`;
     }
+
+    if (options?.customInstructions) {
+      prompt += `\n\nAdditional Instructions: ${options.customInstructions}`;
+    }
+
+    console.log(prompt);
 
     let apiKey: string;
     let summary: string;

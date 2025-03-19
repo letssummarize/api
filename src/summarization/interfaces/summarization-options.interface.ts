@@ -7,4 +7,5 @@ export interface SummarizationOptions {
     listen?: boolean,
     speed?: SummarizationSpeed,
     lang?: SummarizationLanguage,
+    customInstructions?: string,
 }

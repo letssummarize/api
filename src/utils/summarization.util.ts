@@ -24,6 +24,7 @@ export function getSummarizationOptions(
     model: options?.model ?? SummarizationModel.DEFAULT,
     speed: options?.speed ?? SummarizationSpeed.DEFAULT,
     lang: options?.lang ?? SummarizationLanguage.DEFAULT,
+    customInstructions: options?.customInstructions ?? undefined,
   };
 }
 
