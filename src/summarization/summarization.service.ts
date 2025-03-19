@@ -76,6 +76,10 @@ export class SummarizationService {
 
     const options = getSummarizationOptions(optionsDto);
 
+    if (userApiKey && options?.model !== SummarizationModel.OPENAI && options?.speed === SummarizationSpeed.SLOW) {
+      throw new BadRequestException("Slow mode is only supported with OpenAI. Please select OpenAI as the summarization model.")
+    }
+
     try {
       console.log('Fetching transcript for video:', videoUrl);
       console.log('options ', options);
@@ -93,18 +97,6 @@ export class SummarizationService {
         try {
           // Attempt to fetch the YouTube transcript
           const transcript = await this.fetchYouTubeTranscript(videoId);
-
-          // Check if a transcript exists
-          if (!transcript || transcript.length === 0) {
-            console.log(
-              'There is no transcript for this video, falling back to audio processing...',
-            );
-            return this.summarizeYouTubeVideoUsingAudio(
-              videoUrl,
-              options,
-              userApiKey,
-            );
-          }
 
           // Summarize the transcript if available
           const { text, summary, audioFilePath } = await this.summarizeText(
@@ -125,10 +117,8 @@ export class SummarizationService {
           console.warn(
             'Failed to fetch transcript, falling back to audio processing...',
           );
-          return this.summarizeYouTubeVideoUsingAudio(
-            videoUrl,
-            options,
-            userApiKey,
+          throw new BadRequestException(
+            'This video does not have a YouTube transcript. Please use SLOW mode instead.',
           );
         }
       }
@@ -317,9 +307,14 @@ export class SummarizationService {
     options?: SummarizationOptions,
     userApiKey?: string,
   ) {
-    const { length, format, listen } = getSummarizationOptions(options);
 
-    validateSummarizationOptions(options as SummarizationOptions);
+    const { length, format } = getSummarizationOptions(options);
+
+    if (userApiKey && options?.listen && options.model !== SummarizationModel.OPENAI) {
+      throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
+    }
+
+    // validateSummarizationOptions(options as SummarizationOptions);
 
     let prompt: string;
     if (options?.format === SummaryFormat.DEFAULT) {
