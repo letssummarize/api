@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsBoolean, IsString } from "class-validator";
+import { IsOptional, IsEnum, IsBoolean, IsString, Length, MaxLength } from "class-validator";
 import { SummarizationLanguage, SummarizationModel, SummarizationSpeed, SummaryFormat, SummaryLength } from "../enums/summarization-options.enum";
 
 export class SummarizationOptionsDto {
@@ -28,6 +28,7 @@ export class SummarizationOptionsDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(200)
     customInstructions?: string;
   }
   
