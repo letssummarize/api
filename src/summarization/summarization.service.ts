@@ -17,6 +17,7 @@ import {
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
 import { SummarizationOptionsDto } from './dto/summarization-options.dto';
 import {
+  checkDefaultApiKeys,
   extractVideoId,
   extractYouTubeVideoMetadata,
   getApiKey,
@@ -310,15 +311,19 @@ export class SummarizationService {
   ) {
 
     const { length, format, lang } = getSummarizationOptions(options);
+    console.log('DEFAULT_OPENAI_API_KEY', DEFAULT_OPENAI_API_KEY);
+    console.log('DEFAULT_DEEPSEEK_API_KEY', DEFAULT_DEEPSEEK_API_KEY);
 
-    if (userApiKey && options?.listen && options.model !== SummarizationModel.OPENAI) {
-      throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
+    if (!checkDefaultApiKeys()) {
+      if (userApiKey && options?.listen && options.model !== SummarizationModel.OPENAI) {
+        throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
+      }
     }
 
     let prompt: string;
     if (options?.format === SummaryFormat.DEFAULT && options?.lang === SummarizationLanguage.DEFAULT) {
       prompt = `Summarize the following text in a ${length} length:\n\n${text}`;
-    } else if (options?.format === SummaryFormat.DEFAULT){
+    } else if (options?.format === SummaryFormat.DEFAULT) {
       prompt = `Summarize the following text in a ${length} lenght, in ${lang}:\n\n${text}`;
     } else {
       prompt = `Summarize the following text in a ${length} lenght, in ${format} style in ${lang}:\n\n${text}`;
@@ -335,7 +340,11 @@ export class SummarizationService {
     }
 
     if (options?.listen) {
-      const openaiApiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
+      const openaiApiKey = SummarizationModel.DEEPSEEK ? DEFAULT_OPENAI_API_KEY : getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
+      console.log("openaiApiKey is: ", openaiApiKey)
+      if (!openaiApiKey) {
+        throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
+      }
       const audioFilePath = await this.convertTextToSpeech(
         summary,
         openaiApiKey,
@@ -439,7 +448,7 @@ export class SummarizationService {
       const audioFileName = `${fileName}.${AUDIO_FORMAT}`;
       const audioFilePath = `${DOWNLOAD_DIR}/${audioFileName}`;
       await fsPromises.writeFile(audioFilePath, buffer);
-      
+
       if (process.env.USE_S3 === 'true') {
         try {
           const s3Url = await uploadAudioToS3(audioFilePath, audioFileName);
