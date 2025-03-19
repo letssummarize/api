@@ -17,12 +17,13 @@ Authorization: Bearer {{openaiKey}}
       "videoUrl": "{{ytVideo}}"
     },
     "options": {
-      "length": "standard",
-      "format": "bullet-points",
+      "length": "comprehensive",
+      "format": "default",
       "speed": "fast",
-      "model": "deepseek",
+      "model": "openai",
       "listen": true,
-      "lang": "arabic"
+      "customInstructions": "Please provide also the code as part of the summarization",
+      "lang": "english"
     }
 }
 

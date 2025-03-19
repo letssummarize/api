@@ -33,6 +33,8 @@ import {
   PUBLIC_DIR,
   AUDIO_FORMAT,
   MAX_FILE_AGE,
+  OPENAI_MAX_TOKENS,
+  DEEPSEEK_MAX_TOKENS,
 } from 'src/utils/constants';
 import { generateAudioFilename } from 'src/utils/files.util';
 import {
@@ -354,13 +356,15 @@ export class SummarizationService {
         summary,
         openaiApiKey,
       );
+      console.log("summary 1 ", summary)
       return {
         summary,
         text,
         ...(audioFilePath ? { audioFilePath } : {}),
       };
     }
-
+    
+    console.log("summary 2 ", summary)
     return { summary, text };
   }
 
@@ -382,7 +386,7 @@ export class SummarizationService {
             content: prompt,
           },
         ],
-        max_tokens: 150,
+        max_tokens: OPENAI_MAX_TOKENS,
       });
 
       const endTime = new Date();
@@ -424,7 +428,7 @@ export class SummarizationService {
             content: prompt,
           },
         ],
-        max_tokens: 150,
+        max_tokens: DEEPSEEK_MAX_TOKENS,
       });
       return (
         response.choices[0]?.message?.content || 'Could not generate a summary.'
