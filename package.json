@@ -36,7 +36,6 @@
     "pdf-parse": "^1.1.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "youtube-dl-exec": "^3.0.19",
     "youtube-transcript": "^1.2.1",
     "yt-dlp-exec": "^1.0.2"
   },
@@ -88,5 +87,10 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "yt-dlp-exec"
+    ]
   }
 }

@@ -1,14 +1,13 @@
 import {
   BadRequestException,
   Injectable,
-  UnauthorizedException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
-import OpenAI, { AuthenticationError } from 'openai';
+import OpenAI from 'openai';
 import { existsSync, mkdirSync, createReadStream, readFileSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { extname, join } from 'path';
-import { create } from 'youtube-dl-exec';
+import  ytDlpExec from 'yt-dlp-exec';
 import { SummarizeVideoDto } from './dto/summarize-video.dto';
 import {
   extractTextFromPdf,
@@ -23,12 +22,10 @@ import {
   getApiKey,
   getSummarizationOptions,
   isValidYouTubeUrl,
-  validateSummarizationOptions,
 } from 'src/utils/summarization.util';
 import {
   DEFAULT_OPENAI_API_KEY,
   DEFAULT_DEEPSEEK_API_KEY,
-  PATH_TO_YT_DLP,
   DOWNLOAD_DIR,
   PUBLIC_DIR,
   AUDIO_FORMAT,
@@ -47,7 +44,6 @@ import { uploadAudioToS3 } from 'src/utils/s3.util';
 
 @Injectable()
 export class SummarizationService {
-  private readonly ytdlp = create(PATH_TO_YT_DLP); // Using custom binary
 
   private readonly MAX_TOKENS = 15000;
 
@@ -228,11 +224,11 @@ export class SummarizationService {
     const startTime = new Date();
     try {
       console.log(`Downloading audio... Started at ${startTime.toISOString()}`);
-      await this.ytdlp(videoUrl, {
+      await ytDlpExec(videoUrl, {
         extractAudio: true,
         audioFormat: AUDIO_FORMAT,
         output: audioPath,
-        noCheckCertificates: true,
+        noCheckCertificate: true,
         noWarnings: true,
         preferFreeFormats: true,
       });
