@@ -1,9 +1,10 @@
 import {
   BadRequestException,
   Injectable,
+  UnauthorizedException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
-import OpenAI from 'openai';
+import OpenAI, { AuthenticationError } from 'openai';
 import { existsSync, mkdirSync, createReadStream, readFileSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { extname, join } from 'path';
@@ -17,7 +18,6 @@ import {
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
 import { SummarizationOptionsDto } from './dto/summarization-options.dto';
 import {
-  checkDefaultApiKeys,
   extractVideoId,
   extractYouTubeVideoMetadata,
   getApiKey,
@@ -42,7 +42,7 @@ import {
   SummaryFormat,
 } from './enums/summarization-options.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { YoutubeTranscript } from 'youtube-transcript';
+import { YoutubeTranscript, YoutubeTranscriptNotAvailableError } from 'youtube-transcript';
 import { uploadAudioToS3 } from 'src/utils/s3.util';
 
 @Injectable()
@@ -115,13 +115,18 @@ export class SummarizationService {
             videoMetadata: { ...vidMetadata },
             ...(audioFilePath ? { audioFilePath } : {}),
           };
-        } catch (transcriptError) {
-          console.warn(
-            'Failed to fetch transcript, falling back to audio processing...',
-          );
-          throw new BadRequestException(
-            'This video does not have a YouTube transcript. Please use SLOW mode instead.',
-          );
+        } catch (error) {
+          if (error.message.includes('401')) {
+            throw new BadRequestException("The api key you provided is invalid")
+          }
+          if(error instanceof YoutubeTranscriptNotAvailableError) {
+            throw new BadRequestException(
+              'This video does not have a YouTube transcript. Please use SLOW mode instead.',
+            );
+          } else {
+            throw new BadRequestException("There is a problem with network connection")
+          }
+          
         }
       }
 
@@ -314,10 +319,8 @@ export class SummarizationService {
     console.log('DEFAULT_OPENAI_API_KEY', DEFAULT_OPENAI_API_KEY);
     console.log('DEFAULT_DEEPSEEK_API_KEY', DEFAULT_DEEPSEEK_API_KEY);
 
-    if (!checkDefaultApiKeys()) {
-      if (userApiKey && options?.listen && options.model !== SummarizationModel.OPENAI) {
-        throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
-      }
+    if (userApiKey && options?.listen && options.model !== SummarizationModel.OPENAI) {
+      throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
     }
 
     let prompt: string;
@@ -340,11 +343,9 @@ export class SummarizationService {
     }
 
     if (options?.listen) {
-      const openaiApiKey = SummarizationModel.DEEPSEEK ? DEFAULT_OPENAI_API_KEY : getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
+      const openaiApiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
       console.log("openaiApiKey is: ", openaiApiKey)
-      if (!openaiApiKey) {
-        throw new BadRequestException("Text-to-speech is only supported with OpenAI. Please select OpenAI as the summarization model.")
-      }
+
       const audioFilePath = await this.convertTextToSpeech(
         summary,
         openaiApiKey,
