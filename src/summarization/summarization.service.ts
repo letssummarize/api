@@ -36,10 +36,8 @@ import {
 } from 'src/utils/constants';
 import { generateAudioFilename } from 'src/utils/files.util';
 import {
-  SummarizationLanguage,
   SummarizationModel,
   SummarizationSpeed,
-  SummaryFormat,
 } from './enums/summarization-options.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {

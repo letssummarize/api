@@ -138,8 +138,10 @@ export function preparePrompt(options: SummarizationOptions, text: string) {
       options?.lang === SummarizationLanguage.DEFAULT
     ) {
       prompt = `Summarize the following text in a ${length} length. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
-    } else if (options?.format === SummaryFormat.DEFAULT) {
+    } else if (options?.format === SummaryFormat.DEFAULT && options?.lang !== SummarizationLanguage.DEFAULT) {
       prompt = `Summarize the following text in a ${length} length, in ${lang}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
+    } else if (options?.format !== SummaryFormat.DEFAULT && options?.lang === SummarizationLanguage.DEFAULT) {
+      prompt = `Summarize the following text in a ${length} length, in ${format} style. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
     } else {
       prompt = `Summarize the following text in a ${length} length, in ${format} style in ${lang}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
     }
