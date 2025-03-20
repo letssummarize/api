@@ -25,7 +25,6 @@ Before using the Summarization API, ensure you have the following:
 
 - **Node.js v20+** installed
 - **pnpm v10+** installed ([pnpm installation guide](https://pnpm.io/installation))
-- **Python 3** installed _(required for processing YouTube videos)_
 
 ---
 

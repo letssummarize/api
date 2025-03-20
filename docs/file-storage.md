@@ -1,51 +1,69 @@
-# File Storage
+<h1>File Storage</h1>
 
 The Summarization API processes and stores files when handling **file summarization**, **YouTube video transcription**, and **text-to-speech**. This document explains how files are managed, stored, cleaned up, and how to configure AWS S3 for remote storage.
 
-- [File Storage](#file-storage)
-  - [Storage Overview](#storage-overview)
-  - [Storage Locations](#storage-locations)
-  - [Local Storage](#local-storage)
-    - [Example Local Paths](#example-local-paths)
-  - [AWS S3 Storage](#aws-s3-storage)
-    - [How to Set Up AWS S3 for Storage](#how-to-set-up-aws-s3-for-storage)
-    - [Example AWS S3 Path](#example-aws-s3-path)
-  - [File Cleanup](#file-cleanup)
-    - [Automatic Cleanup](#automatic-cleanup)
-    - [Cron Job for Cleanup](#cron-job-for-cleanup)
-  - [Next Steps](#next-steps)
+- [Storage Overview](#storage-overview)
+- [Storage Locations](#storage-locations)
+  - [Local Storage (`USE_S3=false`)](#local-storage-use_s3false)
+  - [AWS S3 Storage (`USE_S3=true`)](#aws-s3-storage-use_s3true)
+- [Local Storage](#local-storage)
+  - [Example Local Paths](#example-local-paths)
+- [AWS S3 Storage](#aws-s3-storage)
+  - [How to Set Up AWS S3 for Storage](#how-to-set-up-aws-s3-for-storage)
+  - [Example AWS S3 Path](#example-aws-s3-path)
+- [File Cleanup](#file-cleanup)
+  - [Automatic Cleanup](#automatic-cleanup)
+  - [Cron Job for Cleanup](#cron-job-for-cleanup)
+- [Next Steps](#next-steps)
 
 ---
 
 ## Storage Overview
 
-- **Uploaded Documents (PDF, DOCX, TXT)** – Used for file summarization.
-- **Audio Files (MP3)** – Generated when processing YouTube videos (if slow mode is used).
-- **TTS Audio Files (MP3)** – Created when text-to-speech (`listen: true`) is enabled.
+The API processes and stores the following types of files:
+
+| File Type                               | Purpose                                                                    |
+| --------------------------------------- | -------------------------------------------------------------------------- |
+| **Uploaded Documents** (PDF, DOCX, TXT) | Used for **file summarization**.                                           |
+| **YouTube Audio Files** (MP3)           | Generated when processing YouTube videos (if **Slow Speed Mode** is used). |
+| **TTS Audio Files** (MP3)               | Created when **text-to-speech (`listen: true`)** is enabled.               |
 
 ---
 
 ## Storage Locations
 
-| File Type           | Storage Location                          |
-| ------------------- | ----------------------------------------- |
-| Uploaded files      | `./downloads/` (default)                  |
-| YouTube audio files | `./downloads/` (if transcribed manually)  |
-| TTS-generated audio | `./public/` (if stored locally) or AWS S3 |
+The storage location depends on the **S3 configuration**.
 
-> TTS-generated audio files are temporarily stored locally or can be uploaded to **AWS S3** if `USE_S3=true` is set in the environment variables.
+### Local Storage (`USE_S3=false`)
+
+| File Type           | Storage Path   |
+| ------------------- | -------------- |
+| YouTube audio files | `./downloads/` |
+| TTS-generated audio | `./public/`    |
+
+> `downloads/` directory is not publicly accessible.
+
+### AWS S3 Storage (`USE_S3=true`)
+
+| File Type           | Storage Path (S3 Bucket)         |
+| ------------------- | -------------------------------- |
+| YouTube audio files | `s3://your-bucket-name/downloads/`  |
+| TTS-generated audio | `s3://your-bucket-name/audios/`     |
+
+> When `USE_S3=true`, **all files are stored in AWS S3** instead of the local file system.
 
 ---
 
 ## Local Storage
 
-By default, all files are saved **locally** in the `downloads` directory unless AWS S3 is enabled.
+By default, all files are stored **locally** in the `downloads` directory.
 
 ### Example Local Paths
 
-- `/downloads/example.pdf` (uploaded document)
-- `/downloads/audio-example.mp3` (YouTube audio transcription)
-- `/public/audio-summary.mp3` (text-to-speech output)
+| File Type          | Local Path                     |
+| ------------------ | ------------------------------ |
+| YouTube Audio File | `/downloads/audio-example.mp3` |
+| TTS Audio File     | `/public/audio-summary.mp3`    |
 
 ---
 
@@ -104,7 +122,7 @@ To store files on AWS S3, follow these steps:
 
 ### Example AWS S3 Path
 
-Instead of returning a local file path, responses will include a **signed S3 URL**:
+Instead of returning a local file path, responses with `audioFilePath` will include a **signed S3 URL**:
 
 ```json
 {
@@ -116,16 +134,18 @@ Instead of returning a local file path, responses will include a **signed S3 URL
 
 ## File Cleanup
 
-To prevent excessive storage usage, the API automatically deletes old files.
+To prevent excessive storage usage, the API **automatically deletes old files**.
 
 ### Automatic Cleanup
 
 - **Local files** older than `MAX_FILE_AGE` (default: **24 hours**) are deleted.
-- **AWS S3 files** remain stored unless manually deleted.
+- **AWS S3 files** remain stored **unless manually deleted**.
 
 ### Cron Job for Cleanup
 
-The API runs a scheduled task **every midnight** to remove old files.
+The API runs a scheduled cleanup task every midnight to remove old files
+
+> If `USE_S3=true`, you will need to manually delete old files from S3 or set up an **S3 Lifecycle Policy**.
 
 ---
 

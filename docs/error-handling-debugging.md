@@ -1,18 +1,23 @@
-# Error Handling & Debugging
+<h1>Error Handling & Debugging</h1>
 
 This guide explains how errors are handled in the **Let's Summarize API** and how to debug issues effectively.
 
 ---
 
-1. [Common Error Responses](#common-error-responses)
-   - [Authentication Errors](#authentication-errors)
-   - [YouTube Summarization Errors](#youtube-summarization-errors)
-   - [Audio Processing Errors](#audio-processing-errors)
-   - [File Summarization Errors](#file-summarization-errors)
-   - [AI Summarization Errors](#ai-summarization-errors)
-2. [Debugging Guide](#debugging-guide)
-3. [Logging and Monitoring](#logging-and-monitoring)
-4. [Error Reporting](#error-reporting)
+- [Common Error Responses](#common-error-responses)
+- [Authentication Errors](#authentication-errors)
+- [YouTube Summarization Errors](#youtube-summarization-errors)
+- [Audio Processing Errors](#audio-processing-errors)
+- [File Summarization Errors](#file-summarization-errors)
+- [AI Summarization Errors](#ai-summarization-errors)
+- [Debugging Guide](#debugging-guide)
+  - [1. **Check API Key**](#1-check-api-key)
+  - [2. **Verify YouTube Video**](#2-verify-youtube-video)
+  - [3. **Test File Processing**](#3-test-file-processing)
+  - [4. **Handle Network Issues**](#4-handle-network-issues)
+  - [5. **Check API Provider Status**](#5-check-api-provider-status)
+- [Logging and Monitoring](#logging-and-monitoring)
+- [Error Reporting](#error-reporting)
 
 ---
 

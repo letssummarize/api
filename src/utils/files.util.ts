@@ -2,7 +2,7 @@ import {
   BadRequestException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
-import * as pdfParse from 'pdf-parse';
+import { default as pdfParse } from 'pdf-parse';
 import * as mammoth from 'mammoth';
 import { existsSync, promises as fsPromises, mkdirSync } from 'fs';
 import { extname, join } from 'path';
@@ -18,6 +18,9 @@ export async function extractTextFromPdf(
   file: Express.Multer.File,
 ): Promise<string> {
   try {
+    if (!file.buffer) {
+      throw new BadRequestException('No file content provided');
+    }
     const pdfData = await pdfParse(file.buffer);
     return pdfData.text;
   } catch (error) {
@@ -36,10 +39,11 @@ export async function extractTextFromDocx(
   file: Express.Multer.File,
 ): Promise<string> {
   try {
-    const { value: text } = await mammoth.extractRawText({
-      buffer: file.buffer,
-    });
-    return text;
+    if (!file.buffer) {
+      throw new BadRequestException('No file content provided');
+    }
+    const result = await mammoth.extractRawText({ buffer: file.buffer });
+    return result.value;
   } catch (error) {
     console.error('error: ', error);
     throw new BadRequestException('Failed to extract text from DOCX.');
@@ -106,10 +110,21 @@ export function ensureDownloadDirectory() {
  * @param file - The uploaded file (PDF, DOCX, or TXT).
  * @returns The extracted text from the file.
  * @throws UnsupportedMediaTypeException if the file format is not supported.
+ * @throws BadRequestException if file content is invalid
  */
 export async function extractTextFromFile(
   file: Express.Multer.File,
 ): Promise<string> {
+  if (!file || !file.buffer) {
+    throw new BadRequestException('No file content provided');
+  }
+
+  console.log('Processing file:', {
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    size: file.size,
+  });
+
   const ext = extname(file.originalname).toLowerCase();
 
   switch (ext) {
@@ -117,10 +132,10 @@ export async function extractTextFromFile(
       return file.buffer.toString('utf-8'); // Read plain text file
 
     case '.pdf':
-      return extractTextFromPdf(file);
+      return await extractTextFromPdf(file);
 
     case '.docx':
-      return extractTextFromDocx(file);
+      return await extractTextFromDocx(file);
 
     default:
       throw new UnsupportedMediaTypeException(
