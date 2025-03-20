@@ -189,30 +189,21 @@ export class SummarizationService {
       );
       const audioPath = await this.downloadAudio(videoUrl);
       const transcript = await this.transcribeAudio(audioPath, userApiKey);
-
-      // Clean up the local audio file if we're using S3
-      if (process.env.USE_S3 === 'true' && !audioPath.startsWith('http') && existsSync(audioPath)) {
-        try {
-          await fsPromises.unlink(audioPath);
-          console.log('Cleaned up local audio file after transcription');
-        } catch (cleanupError) {
-          console.error('Failed to clean up local audio file:', cleanupError);
-        }
-      }
-
-      // Summarize the transcript
       const summary = await this.summarizeText(transcript, options, userApiKey);
       console.log('Summary:', summary);
       const vidMetadata = await extractYouTubeVideoMetadata(videoUrl);
+      console.log('vidMetadata:', vidMetadata);
 
       return {
         summary,
         transcript,
-        audioFilePath: audioPath,
-        videoMetadata: vidMetadata,
+        videoMetadata: { ...vidMetadata },
+        ...(audioPath ? { audioFilePath: audioPath } : {}),
       };
     } catch (error) {
-      throw new Error(`Failed to summarize video using audio: ${error.message}`);
+      throw new Error(
+        `Failed to summarize video using audio: ${error.message}`,
+      );
     }
   }
 
@@ -252,7 +243,6 @@ export class SummarizationService {
     const fileName = generateAudioFilename();
     const audioFileName = `${fileName}.${AUDIO_FORMAT}`;
     let audioPath = join(DOWNLOAD_DIR, audioFileName);
-    let originalFile: string | null = null;
 
     const startTime = new Date();
     try {
@@ -260,40 +250,41 @@ export class SummarizationService {
       
       // Download the audio using ytdl-mp3
       const result = await this.downloader.downloadSong(videoUrl);
-      originalFile = result.outputFile;
       
+      // Previously used yt-dlp-exec for downloading and converting audio
+      // Replaced with ytdl-mp3 for simplicity and better integration
+      // await ytDlpExec(videoUrl, {
+      //   extractAudio: true,
+      //   audioFormat: AUDIO_FORMAT,
+      //   output: audioPath,
+      //   noCheckCertificate: true,
+      //   noWarnings: true,
+      //   preferFreeFormats: true,
+      // });
+
       const endTime = new Date();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
       console.log(
         `Downloading finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
       );
 
-      // Rename the file because ytdl-mp3 uses the video title as the file name by default
-      await fsPromises.rename(result.outputFile, audioPath);
+      // Rename the file because ytdl-mp3 uses the video tile as the file name by default
+      await fsPromises.rename(result.outputFile, audioPath)
 
       if (!existsSync(audioPath)) {
         throw new Error('Audio file was not created.');
       }
 
-      console.log("downloading audio started");
+      console.log("downloading audio started")
       // Upload to S3 if enabled
       if (process.env.USE_S3 === 'true') {
-        console.log("downloading audio using S3..");
+        console.log("downloading audio using S3..")
         try {
           const s3Url = await uploadFileToS3(audioPath, audioFileName, {
             folder: 'downloads',
             contentType: 'audio/mpeg',
           });
           console.log(`Download audio file uploaded to S3: ${s3Url}`);
-
-          // Clean up local file after successful S3 upload
-          try {
-            await fsPromises.unlink(audioPath);
-            console.log('Cleaned up local audio file after S3 upload');
-          } catch (cleanupError) {
-            console.error('Failed to clean up local audio file:', cleanupError);
-          }
-
           return s3Url;
         } catch (s3Error) {
           console.error(
@@ -303,7 +294,7 @@ export class SummarizationService {
           return audioPath;
         }
       }
-      console.log("downloading audio finished");
+      console.log("downloading audio finished")
 
       return audioPath;
     } catch (error) {
@@ -312,19 +303,6 @@ export class SummarizationService {
       console.error(
         `Download failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
       );
-
-      // Clean up any files that might have been created
-      try {
-        if (originalFile && existsSync(originalFile)) {
-          await fsPromises.unlink(originalFile);
-        }
-        if (existsSync(audioPath)) {
-          await fsPromises.unlink(audioPath);
-        }
-      } catch (cleanupError) {
-        console.error('Failed to clean up files after error:', cleanupError);
-      }
-
       throw new Error('Failed to download audio');
     }
   }
@@ -342,26 +320,12 @@ export class SummarizationService {
     const apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
     const openaiClient = new OpenAI({ apiKey });
     const startTime = new Date();
-    let tempPath: string | null = null;
 
     try {
       console.log(
         `Transcribing audio... Started at ${startTime.toISOString()}`,
       );
-
-      let fileStream;
-      if (audioPath.startsWith('http')) {
-        // If it's an S3 URL, download the file first
-        const response = await fetch(audioPath);
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        tempPath = join(DOWNLOAD_DIR, `temp_${Date.now()}.mp3`);
-        await fsPromises.writeFile(tempPath, buffer);
-        fileStream = createReadStream(tempPath);
-        console.log('Downloaded file from S3 for transcription');
-      } else {
-        fileStream = createReadStream(audioPath);
-      }
+      const fileStream = createReadStream(audioPath);
 
       const response = await openaiClient.audio.transcriptions.create({
         file: fileStream,
@@ -373,14 +337,8 @@ export class SummarizationService {
       const endTime = new Date();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
       console.log(
-        `Transcription completed at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+        `Transcription finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
       );
-
-      // Cleanup temporary file if it was created
-      if (tempPath && existsSync(tempPath)) {
-        await fsPromises.unlink(tempPath);
-        console.log('Cleaned up temporary file after transcription');
-      }
 
       return response.text;
     } catch (error) {
@@ -389,17 +347,6 @@ export class SummarizationService {
       console.error(
         `Transcription failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
       );
-
-      // Cleanup temporary file even if transcription failed
-      if (tempPath && existsSync(tempPath)) {
-        try {
-          await fsPromises.unlink(tempPath);
-          console.log('Cleaned up temporary file after transcription failure');
-        } catch (cleanupError) {
-          console.error('Failed to clean up temporary file:', cleanupError);
-        }
-      }
-
       throw new Error(`Failed to transcribe audio: ${error.message}`);
     }
   }
@@ -557,15 +504,6 @@ export class SummarizationService {
             contentType: 'audio/mpeg',
           });
           console.log(`Audio file uploaded to S3: ${s3Url}`);
-
-          // Clean up local file after successful S3 upload
-          try {
-            await fsPromises.unlink(audioFilePath);
-            console.log('Cleaned up local audio file after S3 upload');
-          } catch (cleanupError) {
-            console.error('Failed to clean up local audio file:', cleanupError);
-          }
-
           return s3Url;
         } catch (s3Error) {
           console.error(
