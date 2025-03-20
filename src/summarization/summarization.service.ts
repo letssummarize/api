@@ -130,7 +130,7 @@ export class SummarizationService {
           } else {
             console.error('error ', error);
             throw new BadRequestException(
-              'There is a problem with network connection',
+              'This video does not have a YouTube transcript. Please use SLOW mode instead. Or check your network connection',
             );
           }
         }
