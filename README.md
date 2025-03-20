@@ -2,11 +2,11 @@
 
 <h1>Let's Summarize API</h1>
 
+<img src="./assets/thumb.png" alt="Let's Summarize API Logo" />
+
 <p>
 Let's Summarize API is a backend service that provides video, document, and raw text summarization capabilities. Users can integrate this service into their applications, offering summarization for videos via YouTube URLs, document files, and raw texts.
 </p>
-
-<img src="./assets/thumb.png" alt="Let's Summarize API Logo" />
 
 </div>
 
