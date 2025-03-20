@@ -34,7 +34,7 @@ Before using the Summarization API, ensure you have the following:
 ### 1. Clone the Repository
 
 ```sh
-git clone https://github.com/letssummarize/lets-summarize-api.git
+git clone https://github.com/letssummarize/api.git
 cd lets-summarize-api
 ```
 

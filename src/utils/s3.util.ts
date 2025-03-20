@@ -13,9 +13,15 @@ const s3Client = new S3Client({
   },
 });
 
-export async function uploadAudioToS3(
+interface S3UploadOptions {
+  folder: string;
+  contentType: string;
+}
+
+export async function uploadFileToS3(
   filePath: string,
   fileName: string,
+  options: S3UploadOptions
 ): Promise<string> {
   try {
     checkS3Config();
@@ -23,14 +29,14 @@ export async function uploadAudioToS3(
     const fileContent = readFileSync(filePath);
     const uploadParams = {
       Bucket: process.env.AWS_S3_BUCKET,
-      Key: `audios/${fileName}`,
+      Key: `${options.folder}/${fileName}`,
       Body: fileContent,
-      ContentType: 'audio/mpeg',
+      ContentType: options.contentType,
       ACL: ObjectCannedACL.public_read,
     };
 
     console.log(
-      `Uploading file to S3: ${fileName} to bucket ${process.env.AWS_S3_BUCKET}`,
+      `Uploading file to S3: ${fileName} to bucket ${process.env.AWS_S3_BUCKET}/${options.folder}`,
     );
 
     const command = new PutObjectCommand(uploadParams);
@@ -38,11 +44,22 @@ export async function uploadAudioToS3(
 
     console.log(`File uploaded successfully: ${fileName}`);
 
-    return getS3AudioDir() + fileName;
+    return getS3Url(options.folder, fileName);
   } catch (error) {
     console.error('S3 Upload Error:', error.message);
     throw new Error(`Failed to upload file to S3: ${error.message}`);
   }
+}
+
+// Backward compatibility for audio uploads
+export async function uploadAudioToS3(
+  filePath: string,
+  fileName: string,
+): Promise<string> {
+  return uploadFileToS3(filePath, fileName, {
+    folder: 'audios',
+    contentType: 'audio/mpeg',
+  });
 }
 
 export function checkS3Config() {
@@ -52,11 +69,20 @@ export function checkS3Config() {
     !process.env.AWS_SECRET_ACCESS_KEY
   ) {
     throw new Error(
-      'Missing required S3 configuration (AWS_S3_BUCKET, AWS_ACCESS_KEY_ID, or AWS_SECRET_ACCESS_KEY)',
+      'Missing required S3 configuration. Please check your environment variables.',
     );
   }
 }
 
-export function getS3AudioDir() {
-  return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/audios/`;
+export function getS3Url(folder: string, fileName: string): string {
+  const bucket = process.env.AWS_S3_BUCKET;
+  const region = process.env.AWS_REGION || 'us-east-1';
+  return `https://${bucket}.s3.${region}.amazonaws.com/${folder}/${fileName}`;
+}
+
+// Helper function for audio URLs (backward compatibility)
+export function getS3AudioDir(): string {
+  const bucket = process.env.AWS_S3_BUCKET;
+  const region = process.env.AWS_REGION || 'us-east-1';
+  return `https://${bucket}.s3.${region}.amazonaws.com/audios/`;
 }

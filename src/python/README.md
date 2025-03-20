@@ -2,10 +2,14 @@
 
 A FastAPI-based service for speech-to-text transcription using **faster-whisper** model.
 
-## Usage
+> ⚠️ **Note**: This API is still in development, and it still not used in the main **Let's Summarize API**.
+
+## Installation & Usage
 
 ### Build & run with Docker
+
 Ensure **Docker** is installed. Then run:
+
 ```bash
 docker compose up --build -d
 ```
@@ -33,6 +37,7 @@ GET /
 ```
 
 **Response example:**
+
 ```json
 {
   "status": "running",
@@ -50,9 +55,11 @@ Content-Type: multipart/form-data
 ```
 
 **Body:**
+
 - `file`: audio file to transcribe (e.g., `.mp3`).
 
 **Response example:**
+
 ```json
 {
   "text": "Transcribed text ...",

@@ -7,14 +7,14 @@ import OpenAI from 'openai';
 import { existsSync, mkdirSync, createReadStream, readFileSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { extname, join } from 'path';
-import  ytDlpExec from 'yt-dlp-exec';
+// import  ytDlpExec from 'yt-dlp-exec';
 import { Downloader } from 'ytdl-mp3';
 import { SummarizeVideoDto } from './dto/summarize-video.dto';
 import {
   extractTextFromPdf,
   extractTextFromDocx,
   cleanupOldFiles,
-} from 'src/utils/files.util';
+} from '../utils/files.util';
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
 import { SummarizationOptionsDto } from './dto/summarization-options.dto';
 import {
@@ -24,7 +24,7 @@ import {
   getSummarizationOptions,
   isValidYouTubeUrl,
   preparePrompt,
-} from 'src/utils/summarization.util';
+} from '../utils/summarization.util';
 import {
   DEFAULT_OPENAI_API_KEY,
   DEFAULT_DEEPSEEK_API_KEY,
@@ -34,8 +34,8 @@ import {
   MAX_FILE_AGE,
   OPENAI_MAX_TOKENS,
   DEEPSEEK_MAX_TOKENS,
-} from 'src/utils/constants';
-import { generateAudioFilename } from 'src/utils/files.util';
+} from '../utils/constants';
+import { generateAudioFilename } from '../utils/files.util';
 import {
   SummarizationModel,
   SummarizationSpeed,
@@ -45,7 +45,7 @@ import {
   YoutubeTranscript,
   YoutubeTranscriptNotAvailableError,
 } from 'youtube-transcript';
-import { uploadAudioToS3 } from 'src/utils/s3.util';
+import { uploadFileToS3 } from '../utils/s3.util';
 
 @Injectable()
 export class SummarizationService {
@@ -241,7 +241,8 @@ export class SummarizationService {
    */
   async downloadAudio(videoUrl: string): Promise<string> {
     const fileName = generateAudioFilename();
-    let audioPath = join(DOWNLOAD_DIR, `${fileName}.${AUDIO_FORMAT}`);
+    const audioFileName = `${fileName}.${AUDIO_FORMAT}`;
+    let audioPath = join(DOWNLOAD_DIR, audioFileName);
 
     const startTime = new Date();
     try {
@@ -274,12 +275,33 @@ export class SummarizationService {
         throw new Error('Audio file was not created.');
       }
 
+      console.log("downloading audio started")
+      // Upload to S3 if enabled
+      if (process.env.USE_S3 === 'true') {
+        console.log("downloading audio using S3..")
+        try {
+          const s3Url = await uploadFileToS3(audioPath, audioFileName, {
+            folder: 'downloads',
+            contentType: 'audio/mpeg',
+          });
+          console.log(`Download audio file uploaded to S3: ${s3Url}`);
+          return s3Url;
+        } catch (s3Error) {
+          console.error(
+            'S3 upload failed, falling back to local file:',
+            s3Error,
+          );
+          return audioPath;
+        }
+      }
+      console.log("downloading audio finished")
+
       return audioPath;
     } catch (error) {
       const failTime = new Date();
       const duration = (failTime.getTime() - startTime.getTime()) / 1000;
       console.error(
-        `Error downloading audio: ${error}. Finished at ${failTime.toISOString()}. Time taken: ${duration} seconds`,
+        `Download failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
       );
       throw new Error('Failed to download audio');
     }
@@ -477,7 +499,10 @@ export class SummarizationService {
       
       if (process.env.USE_S3 === 'true') {
         try {
-          const s3Url = await uploadAudioToS3(audioFilePath, audioFileName);
+          const s3Url = await uploadFileToS3(audioFilePath, audioFileName, {
+            folder: 'audios',
+            contentType: 'audio/mpeg',
+          });
           console.log(`Audio file uploaded to S3: ${s3Url}`);
           return s3Url;
         } catch (s3Error) {
