@@ -8,7 +8,9 @@ export const DEFAULT_DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 export const OPENAI_MAX_TOKENS: number = Number(process.env.OPENAI_MAX_TOKENS) || 300;
 export const DEEPSEEK_MAX_TOKENS: number = Number(process.env.DEEPSEEK_MAX_TOKENS) || 1000;
 
-export const PATH_TO_YT_DLP = process.env.PATH_TO_YT_DLP || 'add-your-path-here';
+export const MAX_TRANSCRIPT_TOKENS: number = Number(process.env.MAX_TRANSCRIPT_TOKENS) || 1500;
+
+export const USE_S3: boolean = process.env.USE_S3 === 'true';
 
 export const DOWNLOAD_DIR = join(process.cwd(), 'downloads');
 export const PUBLIC_DIR = '/public/audio';
