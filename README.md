@@ -1,55 +1,31 @@
-# Let's Summarize API
+<div align="center">
 
-Let's Summarize API is a backend service that provides video, PDF, and text summarization capabilities. Users can integrate this service into their applications, offering summarization for videos via YouTube URLs, PDF files, and text documents.
+<h1>Let's Summarize API</h1>
+
+<p>
+Let's Summarize API is a backend service that provides video, document, and raw text summarization capabilities. Users can integrate this service into their applications, offering summarization for videos via YouTube URLs, document files, and raw texts.
+</p>
+
+<img src="./assets/thumb.png" alt="Let's Summarize API Logo" />
+
+</div>
 
 ---
 
-## Prerequisites
+## API Documentation
 
-Before you get started, make sure you have the following installed:
+The API documentation provides guides on integrating and using **Let's Summarize API**.
 
-- Node.js (v20 or higher)
-- pnpm (v10 or higher)
+- [Introduction](./docs/introduction.md)
+- [Getting Started](./docs/getting-started.md)
+- [Authentication](./docs/authentication.md.md)
+- [API Endpoints](./docs/api-endpoints.md)
+- [Summarization Options & Customization](./docs/summarization-options-customization.md)
+- [Error handling & Debugging](./docs/error-handling-debugging.md)
+- [File Storage](./docs/file-storage.md)
 
-## Getting Started
+## Let's Summarize Web Application
 
-Follow these steps to set up your development environment:
+Explore the **Let's Summarize** web application to experience the API in action:
 
-### 1. Install Dependencies
-
-Install the required dependencies using pnpm:
-
-```bash
-pnpm install
-```
-### 2. Start the Development Server
-To run the server in development mode, use:
-
-```bash
-pnpm start:dev
-```
-The API will be available at http://localhost:5000 by default.
-
-### 3. Configure Environment Variables
-
-Create a `.env` file in the root directory by copying the `.env.example`, or using:
-
-```bash
-cp .env.example .env
-```
-### 4. Install yt-dlp
-
-**Windows:**
-- Download from [here](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe)
-- Move the downloaded file (**yt-dlp.exe**) to a directory and add that directory path to your system path environment variables.
-
-not using windows? check their [official installation documentation](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#installation)
-
-### 5. Install FFmpeg
-
-**Windows:**
-```bash
-winget install "FFmpeg (Essentials Build)"
-```
-
-For other installation options, check the [FFmpeg website](https://ffmpeg.org/download.html).
+[Let's Summarize Web App](https://github.com/letssummarize/app)
