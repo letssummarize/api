@@ -38,7 +38,6 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "youtube-transcript": "^1.2.1",
-    "yt-dlp-exec": "^1.0.2",
     "ytdl-mp3": "^5.2.2"
   },
   "devDependencies": {
@@ -93,8 +92,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "ffmpeg-static",
-      "ytdl-mp3",
-      "yt-dlp-exec"
+      "ytdl-mp3"
     ]
   }
 }
