@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, createReadStream, readFileSync } from 'fs';
 import { promises as fsPromises } from 'fs';
 import { extname, join } from 'path';
 import  ytDlpExec from 'yt-dlp-exec';
+import { Downloader } from 'ytdl-mp3';
 import { SummarizeVideoDto } from './dto/summarize-video.dto';
 import {
   extractTextFromPdf,
@@ -51,10 +52,17 @@ export class SummarizationService {
 
   private readonly MAX_TOKENS = 15000;
 
+  private downloader: Downloader;
+
   constructor() {
     if (!existsSync(DOWNLOAD_DIR)) {
       mkdirSync(DOWNLOAD_DIR, { recursive: true });
     }
+    this.downloader = new Downloader({
+      getTags: false,
+      outputDir: DOWNLOAD_DIR,
+    }) 
+  
   }
 
   /**
@@ -233,25 +241,34 @@ export class SummarizationService {
    */
   async downloadAudio(videoUrl: string): Promise<string> {
     const fileName = generateAudioFilename();
-    const audioPath = join(DOWNLOAD_DIR, `${fileName}.${AUDIO_FORMAT}`);
+    let audioPath = join(DOWNLOAD_DIR, `${fileName}.${AUDIO_FORMAT}`);
 
     const startTime = new Date();
     try {
       console.log(`Downloading audio... Started at ${startTime.toISOString()}`);
-      await ytDlpExec(videoUrl, {
-        extractAudio: true,
-        audioFormat: AUDIO_FORMAT,
-        output: audioPath,
-        noCheckCertificate: true,
-        noWarnings: true,
-        preferFreeFormats: true,
-      });
+      
+      // Download the audio using ytdl-mp3
+      const result = await this.downloader.downloadSong(videoUrl);
+      
+      // Previously used yt-dlp-exec for downloading and converting audio
+      // Replaced with ytdl-mp3 for simplicity and better integration
+      // await ytDlpExec(videoUrl, {
+      //   extractAudio: true,
+      //   audioFormat: AUDIO_FORMAT,
+      //   output: audioPath,
+      //   noCheckCertificate: true,
+      //   noWarnings: true,
+      //   preferFreeFormats: true,
+      // });
 
       const endTime = new Date();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
       console.log(
-        `Downloaded audio: ${audioPath}. Finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+        `Downloading finished at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
       );
+
+      // Rename the file because ytdl-mp3 uses the video tile as the file name by default
+      await fsPromises.rename(result.outputFile, audioPath)
 
       if (!existsSync(audioPath)) {
         throw new Error('Audio file was not created.');
