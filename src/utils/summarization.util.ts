@@ -128,6 +128,7 @@ export async function summarizeWithOpenAi(
   const openai = new OpenAI({ apiKey });
   const startTime = new Date();
   try {
+    console.log("Summarizing using OpenAI ...")
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -177,6 +178,7 @@ export async function summarizeWithDeepSeek(
     apiKey: apiKey,
   });
   try {
+    console.log("Summarizing using deepseek ...")
     const response = await openai.chat.completions.create({
       model: 'deepseek-chat',
       messages: [

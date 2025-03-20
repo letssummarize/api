@@ -237,14 +237,14 @@ export class SummarizationService {
     try {
       const audioPath = await this.downloadAudio(videoUrl);
       const transcript = await transcribeAudio(audioPath, userApiKey);
-      const summary = await this.summarizeText(transcript, options, userApiKey);
+      const {summary, audioFilePath} = await this.summarizeText(transcript, options, userApiKey);
       const vidMetadata = await extractYouTubeVideoMetadata(videoUrl);
 
       return {
         summary,
         transcript,
         videoMetadata: { ...vidMetadata },
-        ...(audioPath ? { audioFilePath: audioPath } : {}),
+        ...(audioFilePath ? { audioFilePath } : {}),
       };
     } catch (error) {
       throw new Error(

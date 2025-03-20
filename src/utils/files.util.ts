@@ -87,6 +87,14 @@ export async function cleanupOldFiles(
   }
 }
 
+export async function cleanUpFile(filePath: string) {
+  try {
+    await fsPromises.unlink(filePath);
+  } catch (cleanupError) {
+    console.error('Failed to clean up file after error:', cleanupError);
+  }
+}
+
 export function ensureDownloadDirectory() {
   if (!existsSync(DOWNLOAD_DIR)) {
     mkdirSync(DOWNLOAD_DIR, { recursive: true });

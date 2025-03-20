@@ -22,7 +22,7 @@ Origin: {{allowedOrigin}}
       "format": "default",
       "speed": "slow",
       "model": "deepseek",
-      "listen": false,
+      "listen": true,
       "customInstructions": "use tables and add your opinion in the end",
       "lang": "english"
     }
@@ -41,7 +41,7 @@ Origin: {{allowedOrigin}}
       "length": "brief",
       "format": "bullet-points",
       "model": "deepseek",
-      "listen": true
+      "listen": false
     }
 }
 

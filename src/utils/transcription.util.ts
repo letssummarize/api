@@ -1,7 +1,10 @@
 import OpenAI from 'openai';
+import { existsSync } from 'fs';
+import { MAX_FILE_AGE } from './constants';
 import { getApiKey } from './api-key.util';
 import { createReadStream } from 'fs';
 import { DEFAULT_OPENAI_API_KEY } from './constants';
+import { downloadFileFromS3 } from './s3.util';
 
 /**
  * Transcribes an audio file using OpenAI's Whisper model.
@@ -16,9 +19,21 @@ export async function transcribeAudio(
   const apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
   const openaiClient = new OpenAI({ apiKey });
   const startTime = new Date();
+  let cleanup: (() => Promise<void>) | undefined;
 
   try {
-    const fileStream = createReadStream(audioPath);
+    console.log(`Transcribing audio... Started at ${startTime.toISOString()}`);
+
+    let fileStream;
+    if (audioPath.startsWith('http')) {
+      // If it's an S3 URL, download the file first
+      const { stream, cleanup: cleanupFn } = await downloadFileFromS3(audioPath);
+      fileStream = stream;
+      cleanup = cleanupFn;
+      console.log('Downloaded file from S3 for transcription');
+    } else {
+      fileStream = createReadStream(audioPath);
+    }
 
     const response = await openaiClient.audio.transcriptions.create({
       file: fileStream,
@@ -29,6 +44,13 @@ export async function transcribeAudio(
 
     const endTime = new Date();
     const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+    console.log(
+      `Transcription completed at ${endTime.toISOString()}. Time taken: ${duration} seconds`,
+    );
+
+    if (cleanup) {
+      await cleanup();
+    }
 
     return response.text;
   } catch (error) {
@@ -37,6 +59,11 @@ export async function transcribeAudio(
     console.error(
       `Transcription failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
     );
+
+    if (cleanup) {
+      await cleanup();
+    }
+
     throw new Error(`Failed to transcribe audio: ${error.message}`);
   }
 }
