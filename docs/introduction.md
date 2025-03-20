@@ -15,7 +15,7 @@ This API is optimized for **ease of integration**, making it a suitable tool for
 
 This API is **open-source** and actively maintained on **GitHub**. Developers can contribute, report issues, or fork the repository for their own implementations.
 
-🔗 **GitHub Repository:** [Let's Summarize API](https://github.com/letssummarize/lets-summarize-api)
+🔗 **GitHub Repository:** [Let's Summarize API](https://github.com/letssummarize/api)
 
 ## Key Features
 

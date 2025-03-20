@@ -28,4 +28,4 @@ The API documentation provides guides on integrating and using **Let's Summarize
 
 Explore the **Let's Summarize** web application to experience the API in action:
 
-[Let's Summarize Web App](https://github.com/letssummarize/app)
+[Let's Summarize Web App](https://github.com/letssummarize/web-app)
