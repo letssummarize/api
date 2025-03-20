@@ -12,7 +12,7 @@ export const MAX_TRANSCRIPT_TOKENS: number = Number(process.env.MAX_TRANSCRIPT_T
 
 export const USE_S3: boolean = process.env.USE_S3 === 'true';
 
-export const DOWNLOAD_DIR = join(process.cwd(), 'downloads');
+export const DOWNLOAD_DIR = process.env.VERCEL ? '/tmp' : join(process.cwd(), 'downloads');
 export const PUBLIC_DIR = '/public/audio';
 export const AUDIO_FORMAT = 'mp3';
 export const MAX_FILE_AGE = 1000 * 60; // 1 day

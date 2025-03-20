@@ -236,7 +236,8 @@ export class SummarizationService {
     console.log(`summarizing YOutube Video Using audio ${videoUrl} ... `);
     try {
       const audioPath = await this.downloadAudio(videoUrl);
-      const transcript = await transcribeAudio(audioPath, userApiKey);
+      // const transcript = await transcribeAudio(audioPath, userApiKey);
+      const transcript = "This is the transcript";
       const {summary, audioFilePath} = await this.summarizeText(transcript, options, userApiKey);
       const vidMetadata = await extractYouTubeVideoMetadata(videoUrl);
 
