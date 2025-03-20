@@ -63,12 +63,12 @@ The API uses a **security guard (`ApiKeyGuard`)** to verify API keys before proc
 
 ### Validation Rules\*\*
 
-| **Scenario**                                   | **What Happens?**                            |
-| ---------------------------------------------- | -------------------------------------------- |
-| **Valid API Key in Request Header**            | ✅ Request is allowed                        |
-| **Valid API Key in `.env` but not in request** | ✅ Request is allowed (uses `.env` key)      |
-| **Valid API Key in `.env` and in request**     | ✅ Request is allowed (uses request api key) |
-| **No API Key provided in request or `.env`**   | ❌ Request is rejected                       |
+| **Scenario**                                   | **What Happens?**                            | **Notes**                            |
+| ---------------------------------------------- | -------------------------------------------- | -------------------------------------------- |
+| **Valid API Key in Request Header**            | ✅ Request is allowed                        | Does not require origin to be provided in `ALLOWED_ORIGIN`                        |
+| **Valid API Key in `.env` but not in request** | ✅ Request is allowed (uses `.env` key)      | Requires origin to be provided in `ALLOWED_ORIGIN`      |
+| **Valid API Key in `.env` and in request**     | ✅ Request is allowed (uses request api key) | ✅Even if the origin is same as the valud of `ALLOWED_ORIGIN`, api key in the request will be used |
+| **No API Key provided in request or `.env`**   | ❌ Request is rejected                       |                        |
 
 ---
 
