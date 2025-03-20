@@ -22,7 +22,7 @@ Origin: {{allowedOrigin}}
       "format": "default",
       "speed": "fast",
       "model": "deepseek",
-      "listen": true,
+      "listen": false,
       "customInstructions": "use tables and add your opinion in the end",
       "lang": "english"
     }
@@ -49,11 +49,11 @@ Origin: {{allowedOrigin}}
 POST {{baseUrl}}/summarize/file
 Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
 Authorization: Bearer {{openaiKey}}
-Origin: {{allowedOrigin}}
 
 ------WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="file"; filename="example.pdf"
 Content-Type: application/pdf
+Origin: {{allowedOrigin}}
 
 < {{fileUrl}}
 ------WebKitFormBoundary7MA4YWxkTrZu0gW
