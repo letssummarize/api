@@ -2,6 +2,20 @@
 
 This guide explains how errors are handled in the **Let's Summarize API** and how to debug issues effectively.
 
+---
+
+1. [Common Error Responses](#common-error-responses)
+   - [Authentication Errors](#authentication-errors)
+   - [YouTube Summarization Errors](#youtube-summarization-errors)
+   - [Audio Processing Errors](#audio-processing-errors)
+   - [File Summarization Errors](#file-summarization-errors)
+   - [AI Summarization Errors](#ai-summarization-errors)
+2. [Debugging Guide](#debugging-guide)
+3. [Logging and Monitoring](#logging-and-monitoring)
+4. [Error Reporting](#error-reporting)
+
+---
+
 ## Common Error Responses
 
 The API returns standard HTTP error codes with a structured JSON response.
