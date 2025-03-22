@@ -36,11 +36,11 @@ import {
   isValidYouTubeUrl,
 } from '../utils/video.util';
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
-import { getApiKey } from 'src/utils/api-key.util';
-import { convertTextToSpeech } from 'src/utils/tts.util';
-import { transcribeAudio } from 'src/utils/transcription.util';
+import { getApiKey } from '../utils/api-key.util';
+import { convertTextToSpeech } from '../utils/tts.util';
+import { transcribeAudio } from '../utils/transcription.util';
 import { join } from 'path';
-import { uploadDownloadedAudioToS3 } from 'src/utils/s3.util';
+import { uploadDownloadedAudioToS3 } from '../utils/s3.util';
 
 @Injectable()
 export class SummarizationService {
