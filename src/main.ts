@@ -8,8 +8,12 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   app.enableCors({
-    origin: true,
+    origin: ['http://localhost:3001', 'https://letssummarize.vercel.app'],
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Authorization'],
+    optionsSuccessStatus: 204,
   });
 
   await app.listen(process.env.PORT ?? 3000);
