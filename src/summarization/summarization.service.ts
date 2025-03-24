@@ -184,8 +184,7 @@ export class SummarizationService {
       apiKey = getApiKey(userApiKey, DEFAULT_DEEPSEEK_API_KEY);
       summary = await summarizeWithDeepSeek(apiKey, prompt);
     } else if (options?.model === SummarizationModel.GEMENI) {
-      apiKey = getApiKey(userApiKey, DEFAULT_GEMENI_API_KEY);
-      summary = await summarizeWithGemini(apiKey, prompt);
+      summary = await summarizeWithGemini(prompt);
     } else {
       apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
       summary = await summarizeWithOpenAi(apiKey, prompt);

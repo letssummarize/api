@@ -9,7 +9,7 @@ import {
   STTModel,
 } from '../summarization/enums/summarization-options.enum';
 import { SummarizationOptions } from '../summarization/interfaces/summarization-options.interface';
-import { DEEPSEEK_MAX_TOKENS, OPENAI_MAX_TOKENS } from './constants';
+import { DEEPSEEK_MAX_TOKENS, DEFAULT_GEMENI_API_KEY, OPENAI_MAX_TOKENS } from './constants';
 import { GoogleGenAI } from '@google/genai';
 
 /**
@@ -206,10 +206,13 @@ export async function summarizeWithDeepSeek(
 }
 
 export async function summarizeWithGemini(
-  apiKey: string,
   prompt: string,
 ): Promise<string> {
-  const googleAI = new GoogleGenAI({ apiKey: apiKey });
+  if (!DEFAULT_GEMENI_API_KEY) {
+    throw new Error("Gemint API key is not provided in the .env");
+  }
+  
+  const googleAI = new GoogleGenAI({ apiKey: DEFAULT_GEMENI_API_KEY });
   console.log("Summarizing with Gemini ...")
 
   try {
