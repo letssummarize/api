@@ -46,6 +46,7 @@ import { join } from 'path';
 import { uploadDownloadedAudioToS3 } from '../utils/s3.util';
 import { HttpService } from '@nestjs/axios';
 import { GoogleGenAI } from "@google/genai";
+import ytDlpExec from 'yt-dlp-exec';
 
 @Injectable()
 export class SummarizationService {
@@ -55,10 +56,6 @@ export class SummarizationService {
     if (!USE_S3) {
       ensureDownloadDirectory();
     }
-    this.downloader = new Downloader({
-      getTags: false,
-      outputDir: DOWNLOAD_DIR,
-    });
   }
 
   /**
@@ -280,14 +277,21 @@ export class SummarizationService {
 
     const startTime = new Date();
     try {
-      // Download the audio using ytdl-mp3
-      const result = await this.downloader.downloadSong(videoUrl);
+     
+      await ytDlpExec(videoUrl, {
+        extractAudio: true,
+        audioFormat: AUDIO_FORMAT,
+        output: audioPath,
+        noCheckCertificate: true,
+        noWarnings: true,
+        preferFreeFormats: true,
+      });
 
       const endTime = new Date();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
 
       // Rename the file because ytdl-mp3 uses the video tile as the file name by default
-      await fsPromises.rename(result.outputFile, audioPath);
+      // await fsPromises.rename(result.outputFile, audioPath);
 
       if (!existsSync(audioPath)) {
         throw new Error('Audio file was not created.');
