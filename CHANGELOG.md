@@ -1,0 +1,45 @@
+# Changelog
+
+## [0.1.0](https://github.com/letssummarize/api/compare/api-v0.0.1...api-v0.1.0) (2025-03-24)
+
+
+### Features
+
+* add ApiKeyGuard for external integrations, improve options, and clean up code ([1fc48bb](https://github.com/letssummarize/api/commit/1fc48bbc5f38e3e21f6f1a3eff9ed21b0f45f611))
+* add audio option for summary, implement automatic cleanup for audio files ([45dcefb](https://github.com/letssummarize/api/commit/45dcefbebca7cba9235e290b2ac18e7873dea677))
+* add audioFilePath to response ([f64319c](https://github.com/letssummarize/api/commit/f64319ce1e5ab51cea0604ae511ea2903b231b41))
+* add customization text support to summarization prompt ([5817228](https://github.com/letssummarize/api/commit/58172288cda30ce7fc9046d58d13563f2100e5f6))
+* add language selection for summarization (Arabic/English) ([f6342cb](https://github.com/letssummarize/api/commit/f6342cb722cb123ad5c6753781f10dd75dcd0064))
+* add speed option (fast/slow) for YouTube summarization ([0178c5e](https://github.com/letssummarize/api/commit/0178c5e170a42c03f949b38cb84463865bbab26f))
+* added file summarization ([e9d3108](https://github.com/letssummarize/api/commit/e9d310871858b0c5fa437130b602b7008657908f))
+* added video summarazation ([d64dd34](https://github.com/letssummarize/api/commit/d64dd3460650740dac22d988afd8faef731c6373))
+* **api:** increase max tokens for models ([3657265](https://github.com/letssummarize/api/commit/365726507780ca3f44d5c08efd98d7d5d8d37955))
+* enable CORS ([1e46008](https://github.com/letssummarize/api/commit/1e4600819f0e15616613d8cbc1cec260d918f6b0))
+* enable S3 storage for all files not only the TTS generated files ([6fe7907](https://github.com/letssummarize/api/commit/6fe790721c47c168418ab0931d404375f9225b64))
+* enforce max length for custom instructions and prioritize them in summarization ([4cd8452](https://github.com/letssummarize/api/commit/4cd84523df9a65476ce2e44de9854cd88c3f6830))
+* improve prompts content ([51df964](https://github.com/letssummarize/api/commit/51df964f2c4ffb777a4b1cfcdb8398c8dc0ca628))
+* improve response formatting and add video metadata ([045fb8c](https://github.com/letssummarize/api/commit/045fb8c54aa75fcf62328033282ec496f4569122))
+* init trascribe api using faster-whisper (WIP) ([869548b](https://github.com/letssummarize/api/commit/869548b6b4627a219c1222cf81a05cda038e7613))
+* **storage:** enable optional S3 upload for TTS-1 generated audio files ([87bb148](https://github.com/letssummarize/api/commit/87bb1485271c8d4ad8b5e52066e855277d2e5eec))
+* support deepseek model in request options ([ed66c2d](https://github.com/letssummarize/api/commit/ed66c2d6788ffa3227cc2d9ceeee63092f46defb))
+* validate options by setting defaults values and improve prompts ([b0a2c63](https://github.com/letssummarize/api/commit/b0a2c63e2a9ada82ecc0c19b2578b21a51f94e73))
+* **video summarization:** prioritize youtube-transcript api before downloading audio ([dd4ee88](https://github.com/letssummarize/api/commit/dd4ee88d6c435e17dc0dc90575f8479e9f2be5d3))
+
+
+### Bug Fixes
+
+* audio should be always available when openai default key exists ([3bf288d](https://github.com/letssummarize/api/commit/3bf288da14b9b2b508b0e8084dc50e584cd13d1f))
+* **dockerfile:** update CMD path for transcribe_api ([8371112](https://github.com/letssummarize/api/commit/83711128c2891cdd123463d81a0d0d37fc00496b))
+* enable global validation and insure SummarizationOptionsDto is validated in controller ([96f2f78](https://github.com/letssummarize/api/commit/96f2f78ae9a7da6cc6d4244b4707c654a8184998))
+* ensure yt-dlp-exec can download yt-dlp binary ([fcda3e2](https://github.com/letssummarize/api/commit/fcda3e2cbdf2725b92df2d9e5f8ba55bd9bd4ee8))
+* error message in summarizeYouTubeVideo ([ab14827](https://github.com/letssummarize/api/commit/ab148270d0b4af49f49010de438b04bd10e1d9af))
+* exclude language from prompt when format is custom and language is default ([263545b](https://github.com/letssummarize/api/commit/263545b8eb86ccc5726b50cf040a2940461d5fe6))
+* **file:** file summarization was broken down while refactoring ([2631708](https://github.com/letssummarize/api/commit/2631708f73956b46568249a85123c4dcf938d440))
+* fix file type validation ([18d9949](https://github.com/letssummarize/api/commit/18d99499d0837366f6bab413dc333a3d01431df2))
+* improve error handling by differentiating between missing transcripts and invalid API keys ([1c36ba3](https://github.com/letssummarize/api/commit/1c36ba350c1e9a06cc08b65cfc3e7bf37bc7d7a5))
+* return response if no YouTube transcript, restrict DeepSeek users from audio & slow mode ([99f818f](https://github.com/letssummarize/api/commit/99f818faf147064a2e4e6f35fa3a6629dbedc815))
+* send correct tts file path when slow speed is provided ([aa0ab6f](https://github.com/letssummarize/api/commit/aa0ab6f8eec173c495b1dfb82f460bf5cc4cc2aa))
+* slow speed was not working with s3 storage ([a87580e](https://github.com/letssummarize/api/commit/a87580e67bb791066ce7b6f59578282a77c13a1a))
+* **transcribe api:** FastAPI server was not running (WIP) ([98f0b20](https://github.com/letssummarize/api/commit/98f0b208fb556b7c8567712071201055203770ff))
+* **transcribe api:** resolve loading model and transcribe audio issues (WIP) ([fa31c3b](https://github.com/letssummarize/api/commit/fa31c3bf7ac3c5527e480a101efac0bb32a6a27a))
+* **transcribe-api:** optimize model loading and caching for better performance (WIP) ([1062be9](https://github.com/letssummarize/api/commit/1062be91d5440482064cda7d110a711e6a60ba9a))
