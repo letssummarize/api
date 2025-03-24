@@ -6,6 +6,7 @@ import {
   SummarizationSpeed,
   SummarizationModel,
   SummarizationLanguage,
+  STTModel,
 } from '../summarization/enums/summarization-options.enum';
 import { SummarizationOptions } from '../summarization/interfaces/summarization-options.interface';
 import { DEEPSEEK_MAX_TOKENS, OPENAI_MAX_TOKENS } from './constants';
@@ -25,6 +26,7 @@ export function getSummarizationOptions(
     model: options?.model ?? SummarizationModel.DEFAULT,
     speed: options?.speed ?? SummarizationSpeed.DEFAULT,
     lang: options?.lang ?? SummarizationLanguage.DEFAULT,
+    sttModel: options?.sttModel ?? STTModel.DEFAULT,
     customInstructions: options?.customInstructions ?? undefined,
   };
 }

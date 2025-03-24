@@ -18,3 +18,4 @@ export const AUDIO_FORMAT = 'mp3';
 export const MAX_FILE_AGE = 1000 * 60; // 1 day
 
 export const CORS_ORIGINS: string[] = process.env.CORS ? process.env.CORS.split(',') : ['http://localhost:3001', 'https://letssummarize.vercel.app'];
+export const FASTAPI_URL = "http://0.0.0.0:5566/transcribe/"

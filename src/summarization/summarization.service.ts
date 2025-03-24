@@ -24,6 +24,7 @@ import {
   USE_S3,
 } from '../utils/constants';
 import {
+  STTModel,
   SummarizationModel,
   SummarizationSpeed,
 } from './enums/summarization-options.enum';
@@ -38,15 +39,16 @@ import {
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
 import { getApiKey } from '../utils/api-key.util';
 import { convertTextToSpeech } from '../utils/tts.util';
-import { transcribeAudio } from '../utils/transcription.util';
+import { transcribeUsingOpenAIWhisper, transcribeUsingFastWhisper } from '../utils/transcription.util';
 import { join } from 'path';
 import { uploadDownloadedAudioToS3 } from '../utils/s3.util';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class SummarizationService {
   private downloader: Downloader;
 
-  constructor() {
+  constructor(private readonly httpService: HttpService) {
     if (!USE_S3) {
       ensureDownloadDirectory();
     }
@@ -236,7 +238,13 @@ export class SummarizationService {
     console.log(`summarizing YOutube Video Using audio ${videoUrl} ... `);
     try {
       const audioPath = await this.downloadAudio(videoUrl);
-      const transcript = await transcribeAudio(audioPath, userApiKey);
+      let transcript: string;
+      if (options?.sttModel === STTModel.FAST_WHISPER) {
+        transcript = await transcribeUsingFastWhisper(audioPath, this.httpService);
+      } else {
+        transcript = await transcribeUsingOpenAIWhisper(audioPath, userApiKey);
+      }
+      
       const {summary, audioFilePath} = await this.summarizeText(transcript, options, userApiKey);
       const vidMetadata = await extractYouTubeVideoMetadata(videoUrl);
 

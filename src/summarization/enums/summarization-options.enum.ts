@@ -28,3 +28,9 @@ export enum SummarizationLanguage {
     AR = 'arabic',
     DEFAULT = 'english'
 }
+
+export enum STTModel {
+    FAST_WHISPER = 'faster-whisper',
+    OPENAI_WHISPER = 'whisper-1',
+    DEFAULT = OPENAI_WHISPER
+}

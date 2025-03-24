@@ -1,10 +1,14 @@
 import OpenAI from 'openai';
 import { existsSync } from 'fs';
-import { MAX_FILE_AGE } from './constants';
+import { FASTAPI_URL, MAX_FILE_AGE } from './constants';
 import { getApiKey } from './api-key.util';
-import { createReadStream } from 'fs';
 import { DEFAULT_OPENAI_API_KEY } from './constants';
 import { downloadFileFromS3 } from './s3.util';
+import FormData from 'form-data';
+import { createReadStream } from 'fs';
+import axios from 'axios';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Transcribes an audio file using OpenAI's Whisper model.
@@ -12,7 +16,7 @@ import { downloadFileFromS3 } from './s3.util';
  * @param userApiKey - Optional user-provided OpenAI API key (used when users integrate their own applications with our service).
  * @returns The transcribed text from the audio file.
  */
-export async function transcribeAudio(
+export async function transcribeUsingOpenAIWhisper(
   audioPath: string,
   userApiKey?: string,
 ): Promise<string> {
@@ -27,7 +31,8 @@ export async function transcribeAudio(
     let fileStream;
     if (audioPath.startsWith('http')) {
       // If it's an S3 URL, download the file first
-      const { stream, cleanup: cleanupFn } = await downloadFileFromS3(audioPath);
+      const { stream, cleanup: cleanupFn } =
+        await downloadFileFromS3(audioPath);
       fileStream = stream;
       cleanup = cleanupFn;
       console.log('Downloaded file from S3 for transcription');
@@ -67,3 +72,29 @@ export async function transcribeAudio(
     throw new Error(`Failed to transcribe audio: ${error.message}`);
   }
 }
+
+export const transcribeUsingFastWhisper = async (
+  audioFilePath: string,
+  httpService: HttpService,
+) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', createReadStream(audioFilePath), 'audio.mp3');
+
+    const response = await firstValueFrom(
+      httpService.post(FASTAPI_URL, formData, {
+        headers: {
+          ...formData.getHeaders(),
+        },
+      }),
+    );
+
+    return response.data.text;
+  } catch (error) {
+    console.error(
+      'Error transcribing audio:',
+      error.response?.data || error.message,
+    );
+    throw new Error('Transcription failed');
+  }
+};

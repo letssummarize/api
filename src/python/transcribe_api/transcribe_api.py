@@ -134,7 +134,6 @@ async def transcribe_audio(file: UploadFile = File(...)):
             beam_size=WHISPER_BEAM_SIZE,
             language=WHISPER_LANGUAGE if WHISPER_LANGUAGE != "auto" else None,
             temperature=WHISPER_TEMPERATURE,
-            vad_filter=True,  # Filter out non-speech parts
             vad_parameters={"min_silence_duration_ms": 500},
         )
 
