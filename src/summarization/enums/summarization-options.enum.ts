@@ -14,6 +14,7 @@ export enum SummaryFormat {
 export enum SummarizationModel {
     OPENAI = 'openai',
     DEEPSEEK = 'deepseek',
+    GEMENI = 'gemini',
     DEFAULT = OPENAI,
 }
 

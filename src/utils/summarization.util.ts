@@ -10,6 +10,7 @@ import {
 } from '../summarization/enums/summarization-options.enum';
 import { SummarizationOptions } from '../summarization/interfaces/summarization-options.interface';
 import { DEEPSEEK_MAX_TOKENS, OPENAI_MAX_TOKENS } from './constants';
+import { GoogleGenAI } from '@google/genai';
 
 /**
  * Creates a complete SummarizationOptions object with default values for missing options
@@ -201,5 +202,24 @@ export async function summarizeWithDeepSeek(
     );
   } catch (error) {
     throw new Error(`Failed to summarize text: ${error.message}`);
+  }
+}
+
+export async function summarizeWithGemini(
+  apiKey: string,
+  prompt: string,
+): Promise<string> {
+  const googleAI = new GoogleGenAI({ apiKey: apiKey });
+  console.log("Summarizing with Gemini ...")
+
+  try {
+    const response = await googleAI.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+    console.log(response.text);
+    return response.text || "Could not generate a summary";
+  } catch (error) {
+    throw new Error(`Failed to summarize text: ${error.message}`)
   }
 }

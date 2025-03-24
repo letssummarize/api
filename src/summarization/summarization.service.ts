@@ -13,12 +13,14 @@ import {
   getSummarizationOptions,
   preparePrompt,
   summarizeWithDeepSeek,
+  summarizeWithGemini,
   summarizeWithOpenAi,
 } from '../utils/summarization.util';
 import {
   AUDIO_FORMAT,
   DEFAULT_DEEPSEEK_API_KEY,
   DEFAULT_OPENAI_API_KEY,
+  DEFAULT_GEMENI_API_KEY,
   DOWNLOAD_DIR,
   MAX_FILE_AGE,
   USE_S3,
@@ -43,6 +45,7 @@ import { transcribeUsingOpenAIWhisper, transcribeUsingFastWhisper } from '../uti
 import { join } from 'path';
 import { uploadDownloadedAudioToS3 } from '../utils/s3.util';
 import { HttpService } from '@nestjs/axios';
+import { GoogleGenAI } from "@google/genai";
 
 @Injectable()
 export class SummarizationService {
@@ -180,6 +183,9 @@ export class SummarizationService {
     if (options?.model === SummarizationModel.DEEPSEEK) {
       apiKey = getApiKey(userApiKey, DEFAULT_DEEPSEEK_API_KEY);
       summary = await summarizeWithDeepSeek(apiKey, prompt);
+    } else if (options?.model === SummarizationModel.GEMENI) {
+      apiKey = getApiKey(userApiKey, DEFAULT_GEMENI_API_KEY);
+      summary = await summarizeWithGemini(apiKey, prompt);
     } else {
       apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
       summary = await summarizeWithOpenAi(apiKey, prompt);
