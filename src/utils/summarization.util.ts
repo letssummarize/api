@@ -79,35 +79,24 @@ export function validateSummarizationOptions(
 export function preparePrompt(options: SummarizationOptions, text: string) {
   const { length, format, lang } = getSummarizationOptions(options);
   let prompt: string;
+  let language: string;
+  
+  if (!lang || lang === SummarizationLanguage.DEFAULT) {
+    language = "the same language as the text";
+  } else {
+    language = lang;
+  }
 
   if (
-    options?.customInstructions &&
-    options?.lang === SummarizationLanguage.DEFAULT
-  ) {
-    prompt = `Summarize the following text based on these special requirements: ${options.customInstructions}`;
-  } else if (
-    options?.customInstructions &&
-    options?.lang !== SummarizationLanguage.DEFAULT
-  ) {
-    prompt = `Summarize the following text in ${lang} based on these special requirements: ${options.customInstructions}`;
+    options?.customInstructions) {
+    prompt = `Summarize the following text in ${language} based on these special requirements: ${options.customInstructions}`;
   } else {
     if (
-      options?.format === SummaryFormat.DEFAULT &&
-      options?.lang === SummarizationLanguage.DEFAULT
+      options?.format === SummaryFormat.DEFAULT 
     ) {
-      prompt = `Summarize the following text in a ${length} length. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
-    } else if (
-      options?.format === SummaryFormat.DEFAULT &&
-      options?.lang !== SummarizationLanguage.DEFAULT
-    ) {
-      prompt = `Summarize the following text in a ${length} length, in ${lang}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
-    } else if (
-      options?.format !== SummaryFormat.DEFAULT &&
-      options?.lang === SummarizationLanguage.DEFAULT
-    ) {
-      prompt = `Summarize the following text in a ${length} length, in ${format} style. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
+      prompt = `Summarize the following text in a ${length} length in ${language}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
     } else {
-      prompt = `Summarize the following text in a ${length} length, in ${format} style in ${lang}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
+      prompt = `Summarize the following text in a ${length} length, in ${format} style in ${language}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
     }
   }
 

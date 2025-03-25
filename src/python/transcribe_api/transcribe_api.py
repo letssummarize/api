@@ -26,7 +26,7 @@ MODEL_LOAD_TIMEOUT = int(
 )  # Max seconds to wait for model
 
 # 🎙️ Whisper Transcription Configuration
-WHISPER_BEAM_SIZE = int(os.getenv("WHISPER_BEAM_SIZE", "5"))
+WHISPER_BEAM_SIZE = int(os.getenv("WHISPER_BEAM_SIZE", "1"))
 WHISPER_LANGUAGE = os.getenv("WHISPER_LANGUAGE", "en")
 WHISPER_TEMPERATURE = float(os.getenv("WHISPER_TEMPERATURE", "0.3"))
 
@@ -132,7 +132,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
         segments, info = model.transcribe(
             temp_file_path,
             beam_size=WHISPER_BEAM_SIZE,
-            language=WHISPER_LANGUAGE if WHISPER_LANGUAGE != "auto" else None,
+            language=None,
             temperature=WHISPER_TEMPERATURE,
             vad_parameters={"min_silence_duration_ms": 500},
         )
