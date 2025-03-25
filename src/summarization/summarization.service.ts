@@ -285,6 +285,8 @@ export class SummarizationService {
         noCheckCertificate: true,
         noWarnings: true,
         preferFreeFormats: true,
+        referer: 'youtube.com',
+        userAgent: 'googlebot'
       });
 
       const endTime = new Date();
