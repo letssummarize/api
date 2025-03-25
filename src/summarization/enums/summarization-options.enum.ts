@@ -27,7 +27,7 @@ export enum SummarizationSpeed {
 export enum SummarizationLanguage {
     EN = 'english',
     AR = 'arabic',
-    DEFAULT = 'english'
+    DEFAULT = 'default'
 }
 
 export enum STTModel {
