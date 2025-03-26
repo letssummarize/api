@@ -23,7 +23,7 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
-            cd /api
+            cd ~/api
             git pull origin prod
             pnpm install
             pnpm build
