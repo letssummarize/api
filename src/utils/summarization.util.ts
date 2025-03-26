@@ -149,7 +149,7 @@ export async function summarizeWithOpenAi(
     console.error(
       `Summarization failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
     );
-    throw new Error(`Failed to summarize text: ${error.message}`);
+    return `OpenAI summarization failed: ${error?.response?.data?.error || error.message}`;
   }
 }
 
@@ -190,7 +190,7 @@ export async function summarizeWithDeepSeek(
       response.choices[0]?.message?.content || 'Could not generate a summary.'
     );
   } catch (error) {
-    throw new Error(`Failed to summarize text: ${error.message}`);
+    return `DeepSeek summarization failed: ${error?.response?.data?.error || error.message}`
   }
 }
 
@@ -212,6 +212,6 @@ export async function summarizeWithGemini(
     console.log(response.text);
     return response.text || "Could not generate a summary";
   } catch (error) {
-    throw new Error(`Failed to summarize text: ${error.message}`)
+    return `Gemini summarization failed: ${error?.response?.data?.error || error.message}`;
   }
 }
