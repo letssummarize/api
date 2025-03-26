@@ -132,7 +132,7 @@ export class SummarizationService {
           } else {
             console.error('error ', error);
             throw new BadRequestException(
-              'This video does not have a YouTube transcript. Please use SLOW mode instead. Or check your network connection',
+              'This video does not have a YouTube transcript. Please use SLOW mode instead. Or check your network connection.',
             );
           }
         }
