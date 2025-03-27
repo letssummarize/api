@@ -65,6 +65,6 @@ export class SummarizationController {
 
   @Get()
   getMessage() {
-    return 'Hello there.';
+    return 'Hello World.';
   }
 }
