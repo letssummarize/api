@@ -20,3 +20,5 @@ export const MAX_FILE_AGE = 1000 * 60; // 1 day
 
 export const CORS_ORIGINS: string[] = process.env.CORS ? process.env.CORS.split(',') : ['http://localhost:3001', 'https://letssummarize.vercel.app'];
 export const FASTAPI_URL = process.env.FASTAPI_URL || 'your-fastapi-url';
+
+export const PO_TOKEN = process.env.PO_TOKEN;

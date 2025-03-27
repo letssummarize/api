@@ -24,6 +24,7 @@ import {
   DOWNLOAD_DIR,
   MAX_FILE_AGE,
   USE_S3,
+  PO_TOKEN,
 } from '../utils/constants';
 import {
   STTModel,
@@ -46,7 +47,8 @@ import { join } from 'path';
 import { uploadDownloadedAudioToS3 } from '../utils/s3.util';
 import { HttpService } from '@nestjs/axios';
 import { GoogleGenAI } from "@google/genai";
-import ytDlpExec from 'yt-dlp-exec';
+import ytDlpExec, { YtFlags } from 'yt-dlp-exec';
+import { CustomYtFlags } from './interfaces/custom-yt-flags';
 
 @Injectable()
 export class SummarizationService {
@@ -277,7 +279,7 @@ export class SummarizationService {
 
     const startTime = new Date();
     try {
-     
+      
       await ytDlpExec(videoUrl, {
         extractAudio: true,
         audioFormat: AUDIO_FORMAT,
@@ -287,8 +289,8 @@ export class SummarizationService {
         preferFreeFormats: true,
         referer: 'youtube.com',
         userAgent: 'googlebot',
-        forceGenericExtractor: true,
-      });
+        extractorArgs: `youtube:po_token=web.gvs+${PO_TOKEN}`
+      } as CustomYtFlags);
 
       const endTime = new Date();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
