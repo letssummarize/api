@@ -122,7 +122,7 @@ export async function fetchYouTubeTranscript(videoId: string): Promise<string> {
     const safeLength = Math.floor(MAX_TRANSCRIPT_TOKENS / 4);
     return words.slice(0, safeLength).join(' ');
   } catch (error) {
-    throw new Error(
+    throw new Error(  
       `Could not fetch transcript from YouTube: ${error.message}`,
     );
   }

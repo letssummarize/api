@@ -286,7 +286,8 @@ export class SummarizationService {
         noWarnings: true,
         preferFreeFormats: true,
         referer: 'youtube.com',
-        userAgent: 'googlebot'
+        userAgent: 'googlebot',
+        forceGenericExtractor: true,
       });
 
       const endTime = new Date();
@@ -321,7 +322,7 @@ export class SummarizationService {
       const failTime = new Date();
       const duration = (failTime.getTime() - startTime.getTime()) / 1000;
       console.error(
-        `Download failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
+        `Download failed at ${failTime.toISOString()} Time taken: ${duration} seconds. Error: ${error.message}`,
       );
       throw new Error('Failed to download audio');
     }
