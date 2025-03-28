@@ -25,6 +25,7 @@ import {
   MAX_FILE_AGE,
   USE_S3,
   PO_TOKEN,
+  COOKIES_PATH,
 } from '../utils/constants';
 import {
   STTModel,
@@ -289,7 +290,8 @@ export class SummarizationService {
         preferFreeFormats: true,
         referer: 'youtube.com',
         userAgent: 'googlebot',
-        extractorArgs: `youtube:po_token=web.gvs+${PO_TOKEN}`
+        extractorArgs: `youtube:po_token=web.gvs+${PO_TOKEN}`,
+        cookies: COOKIES_PATH
       } as CustomYtFlags);
 
       const endTime = new Date();
