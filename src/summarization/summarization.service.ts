@@ -13,17 +13,22 @@ import {
   getSummarizationOptions,
   preparePrompt,
   summarizeWithDeepSeek,
+  summarizeWithGemini,
   summarizeWithOpenAi,
 } from '../utils/summarization.util';
 import {
   AUDIO_FORMAT,
   DEFAULT_DEEPSEEK_API_KEY,
   DEFAULT_OPENAI_API_KEY,
+  DEFAULT_GEMENI_API_KEY,
   DOWNLOAD_DIR,
   MAX_FILE_AGE,
   USE_S3,
+  PO_TOKEN,
+  COOKIES_PATH,
 } from '../utils/constants';
 import {
+  STTModel,
   SummarizationModel,
   SummarizationSpeed,
 } from './enums/summarization-options.enum';
@@ -36,24 +41,24 @@ import {
   isValidYouTubeUrl,
 } from '../utils/video.util';
 import { SummarizationOptions } from './interfaces/summarization-options.interface';
-import { getApiKey } from 'src/utils/api-key.util';
-import { convertTextToSpeech } from 'src/utils/tts.util';
-import { transcribeAudio } from 'src/utils/transcription.util';
+import { getApiKey } from '../utils/api-key.util';
+import { convertTextToSpeech } from '../utils/tts.util';
+import { transcribeUsingOpenAIWhisper, transcribeUsingFastWhisper } from '../utils/transcription.util';
 import { join } from 'path';
-import { uploadDownloadedAudioToS3 } from 'src/utils/s3.util';
+import { uploadDownloadedAudioToS3 } from '../utils/s3.util';
+import { HttpService } from '@nestjs/axios';
+import { GoogleGenAI } from "@google/genai";
+import ytDlpExec, { YtFlags } from 'yt-dlp-exec';
+import { CustomYtFlags } from './interfaces/custom-yt-flags';
 
 @Injectable()
 export class SummarizationService {
   private downloader: Downloader;
 
-  constructor() {
+  constructor(private readonly httpService: HttpService) {
     if (!USE_S3) {
       ensureDownloadDirectory();
     }
-    this.downloader = new Downloader({
-      getTags: false,
-      outputDir: DOWNLOAD_DIR,
-    });
   }
 
   /**
@@ -130,7 +135,7 @@ export class SummarizationService {
           } else {
             console.error('error ', error);
             throw new BadRequestException(
-              'This video does not have a YouTube transcript. Please use SLOW mode instead. Or check your network connection',
+              'This video does not have a YouTube transcript. Please use SLOW mode instead. Or check your network connection.',
             );
           }
         }
@@ -178,6 +183,8 @@ export class SummarizationService {
     if (options?.model === SummarizationModel.DEEPSEEK) {
       apiKey = getApiKey(userApiKey, DEFAULT_DEEPSEEK_API_KEY);
       summary = await summarizeWithDeepSeek(apiKey, prompt);
+    } else if (options?.model === SummarizationModel.GEMENI) {
+      summary = await summarizeWithGemini(prompt);
     } else {
       apiKey = getApiKey(userApiKey, DEFAULT_OPENAI_API_KEY);
       summary = await summarizeWithOpenAi(apiKey, prompt);
@@ -236,7 +243,13 @@ export class SummarizationService {
     console.log(`summarizing YOutube Video Using audio ${videoUrl} ... `);
     try {
       const audioPath = await this.downloadAudio(videoUrl);
-      const transcript = await transcribeAudio(audioPath, userApiKey);
+      let transcript: string;
+      if (options?.sttModel === STTModel.FAST_WHISPER) {
+        transcript = await transcribeUsingFastWhisper(audioPath, this.httpService);
+      } else {
+        transcript = await transcribeUsingOpenAIWhisper(audioPath, userApiKey);
+      }
+      
       const {summary, audioFilePath} = await this.summarizeText(transcript, options, userApiKey);
       const vidMetadata = await extractYouTubeVideoMetadata(videoUrl);
 
@@ -267,14 +280,25 @@ export class SummarizationService {
 
     const startTime = new Date();
     try {
-      // Download the audio using ytdl-mp3
-      const result = await this.downloader.downloadSong(videoUrl);
+      
+      await ytDlpExec(videoUrl, {
+        extractAudio: true,
+        audioFormat: AUDIO_FORMAT,
+        output: audioPath,
+        noCheckCertificate: true,
+        noWarnings: true,
+        preferFreeFormats: true,
+        referer: 'youtube.com',
+        userAgent: 'googlebot',
+        extractorArgs: `youtube:po_token=web.gvs+${PO_TOKEN}`,
+        cookies: COOKIES_PATH
+      } as CustomYtFlags);
 
       const endTime = new Date();
       const duration = (endTime.getTime() - startTime.getTime()) / 1000;
 
       // Rename the file because ytdl-mp3 uses the video tile as the file name by default
-      await fsPromises.rename(result.outputFile, audioPath);
+      // await fsPromises.rename(result.outputFile, audioPath);
 
       if (!existsSync(audioPath)) {
         throw new Error('Audio file was not created.');
@@ -302,7 +326,7 @@ export class SummarizationService {
       const failTime = new Date();
       const duration = (failTime.getTime() - startTime.getTime()) / 1000;
       console.error(
-        `Download failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
+        `Download failed at ${failTime.toISOString()} Time taken: ${duration} seconds. Error: ${error.message}`,
       );
       throw new Error('Failed to download audio');
     }

@@ -98,17 +98,31 @@ export async function extractYouTubeVideoMetadata(
  */
 export async function fetchYouTubeTranscript(videoId: string): Promise<string> {
   try {
-    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
-    const fullTranscript = transcriptItems
-      .map((item) => item.text.trim())
-      .filter((text) => text.length > 0)
-      .join(' ');
+    // Replaced with youtubei.js
+    // const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+    // const fullTranscript = transcriptItems
+    //   .map((item) => item.text.trim())
+    //   .filter((text) => text.length > 0)
+    //   .join(' ');
+      const youtubei = await import ('youtubei.js');
+      const Innertube = youtubei.Innertube;
+      const youtube = await Innertube.create({
+        lang: 'en',
+        location: 'US',
+        retrieve_player: false,
+      });
 
-    const words = fullTranscript.split(' ');
+    const info = await youtube.getInfo(videoId);
+		const transcriptData = await info.getTranscript();
+
+    const segments = transcriptData?.transcript?.content?.body?.initial_segments || [];
+    const fullTranscript = segments.map(segment => segment.snippet.text).join(' ');    
+    // const words = fullTranscript.split(' ');
+    const words = fullTranscript.split(/\s+/);
     const safeLength = Math.floor(MAX_TRANSCRIPT_TOKENS / 4);
     return words.slice(0, safeLength).join(' ');
   } catch (error) {
-    throw new Error(
+    throw new Error(  
       `Could not fetch transcript from YouTube: ${error.message}`,
     );
   }

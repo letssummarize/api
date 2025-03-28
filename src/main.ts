@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { Express } from 'express';
+import { CORS_ORIGINS } from './utils/constants';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -9,23 +9,15 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   app.enableCors({
-    origin: true,
+    origin: CORS_ORIGINS,
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Authorization'],
+    optionsSuccessStatus: 204,
   });
 
-  if (process.env.NODE_ENV === 'production') {
-    await app.init();
-    const expressApp = app.getHttpAdapter().getInstance();
-    return expressApp;
-  } else {
-    await app.listen(process.env.PORT ?? 3000);
-  }
+  await app.listen(process.env.PORT ?? 3000);
 }
 
-// Run locally in development
-if (process.env.NODE_ENV !== 'production') {
-  bootstrap();
-}
-
-// Export for Vercel in production
-export default bootstrap;
+bootstrap();

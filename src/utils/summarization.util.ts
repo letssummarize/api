@@ -6,9 +6,11 @@ import {
   SummarizationSpeed,
   SummarizationModel,
   SummarizationLanguage,
+  STTModel,
 } from '../summarization/enums/summarization-options.enum';
 import { SummarizationOptions } from '../summarization/interfaces/summarization-options.interface';
-import { DEEPSEEK_MAX_TOKENS, OPENAI_MAX_TOKENS } from './constants';
+import { DEEPSEEK_MAX_TOKENS, DEFAULT_GEMENI_API_KEY, OPENAI_MAX_TOKENS } from './constants';
+import { GoogleGenAI } from '@google/genai';
 
 /**
  * Creates a complete SummarizationOptions object with default values for missing options
@@ -25,6 +27,7 @@ export function getSummarizationOptions(
     model: options?.model ?? SummarizationModel.DEFAULT,
     speed: options?.speed ?? SummarizationSpeed.DEFAULT,
     lang: options?.lang ?? SummarizationLanguage.DEFAULT,
+    sttModel: options?.sttModel ?? STTModel.DEFAULT,
     customInstructions: options?.customInstructions ?? undefined,
   };
 }
@@ -76,35 +79,24 @@ export function validateSummarizationOptions(
 export function preparePrompt(options: SummarizationOptions, text: string) {
   const { length, format, lang } = getSummarizationOptions(options);
   let prompt: string;
+  let language: string;
+  
+  if (!lang || lang === SummarizationLanguage.DEFAULT) {
+    language = "the same language as the text";
+  } else {
+    language = lang;
+  }
 
   if (
-    options?.customInstructions &&
-    options?.lang === SummarizationLanguage.DEFAULT
-  ) {
-    prompt = `Summarize the following text based on these special requirements: ${options.customInstructions}`;
-  } else if (
-    options?.customInstructions &&
-    options?.lang !== SummarizationLanguage.DEFAULT
-  ) {
-    prompt = `Summarize the following text in ${lang} based on these special requirements: ${options.customInstructions}`;
+    options?.customInstructions) {
+    prompt = `Summarize the following text in ${language} based on these special requirements: ${options.customInstructions}`;
   } else {
     if (
-      options?.format === SummaryFormat.DEFAULT &&
-      options?.lang === SummarizationLanguage.DEFAULT
+      options?.format === SummaryFormat.DEFAULT 
     ) {
-      prompt = `Summarize the following text in a ${length} length. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
-    } else if (
-      options?.format === SummaryFormat.DEFAULT &&
-      options?.lang !== SummarizationLanguage.DEFAULT
-    ) {
-      prompt = `Summarize the following text in a ${length} length, in ${lang}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
-    } else if (
-      options?.format !== SummaryFormat.DEFAULT &&
-      options?.lang === SummarizationLanguage.DEFAULT
-    ) {
-      prompt = `Summarize the following text in a ${length} length, in ${format} style. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
+      prompt = `Summarize the following text in a ${length} length in ${language}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
     } else {
-      prompt = `Summarize the following text in a ${length} length, in ${format} style in ${lang}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
+      prompt = `Summarize the following text in a ${length} length, in ${format} style in ${language}. Focus on the key points, main arguments, and important details. Ensure the summary is coherent and complete`;
     }
   }
 
@@ -157,7 +149,7 @@ export async function summarizeWithOpenAi(
     console.error(
       `Summarization failed at ${failTime.toISOString()}. Time taken: ${duration} seconds. Error: ${error.message}`,
     );
-    throw new Error(`Failed to summarize text: ${error.message}`);
+    return `OpenAI summarization failed: ${error?.response?.data?.error || error.message}`;
   }
 }
 
@@ -198,6 +190,28 @@ export async function summarizeWithDeepSeek(
       response.choices[0]?.message?.content || 'Could not generate a summary.'
     );
   } catch (error) {
-    throw new Error(`Failed to summarize text: ${error.message}`);
+    return `DeepSeek summarization failed: ${error?.response?.data?.error || error.message}`
+  }
+}
+
+export async function summarizeWithGemini(
+  prompt: string,
+): Promise<string> {
+  if (!DEFAULT_GEMENI_API_KEY) {
+    throw new Error("Gemint API key is not provided in the .env");
+  }
+  
+  const googleAI = new GoogleGenAI({ apiKey: DEFAULT_GEMENI_API_KEY });
+  console.log("Summarizing with Gemini ...")
+
+  try {
+    const response = await googleAI.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+    console.log(response.text);
+    return response.text || "Could not generate a summary";
+  } catch (error) {
+    return `Gemini summarization failed: ${error?.response?.data?.error || error.message}`;
   }
 }

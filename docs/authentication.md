@@ -3,7 +3,7 @@
 The Summarization API uses **API Key authentication** to control access.
 There are two ways to provide an API key:
 
-1. **Environment Variables (`.env`)** – The API owner can set `OPENAI_API_KEY` and `DEEPSEEK_API_KEY` to allow authorized access without requiring clients to provide API keys. However this only works if the **origin** is same as the value of `ALLOWED_ORIGIN`.
+1. **Environment Variables (`.env`)** – The API owner can set `OPENAI_API_KEY` and `DEEPSEEK_API_KEY` to allow authorized access without requiring clients to provide API keys. However this only works if the **origin** is a value in `ALLOWED_ORIGINS`.
 2. **Request Headers** – Clients can include an API key in the `Authorization` header for each request.
 
 > When there is both a `.env` key and a request header key, the request header key will be used.
@@ -45,15 +45,15 @@ Authorization: Bearer YOUR_API_KEY
 
 ## 2. Allowed Origin Configuration
 
-The API restricts access to the default keys to specific **frontend applications** by defining `ALLOWED_ORIGIN`.  
+The API restricts access to the default keys to specific **frontend applications** by defining `ALLOWED_ORIGINS`.  
 If an origin is **not** allowed, then the api key must be provided in the request headers.
 
 ```ini
-ALLOWED_ORIGIN=http://localhost:3001
+ALLOWED_ORIGINS=http://localhost:3001,http://localhost:3000
 ```
 
-- If a frontend **matches `ALLOWED_ORIGIN`**, it **does not** need to send API keys.
-- If a frontend **is not listed in `ALLOWED_ORIGIN`**, it must include API keys in request headers.
+- If a frontend **is listed in `ALLOWED_ORIGINS`**, it **does not** need to send API keys.
+- If a frontend **is not listed in `ALLOWED_ORIGINS`**, it must include API keys in request headers.
 
 ---
 
@@ -65,9 +65,9 @@ The API uses a **security guard (`ApiKeyGuard`)** to verify API keys before proc
 
 | **Scenario**                                   | **What Happens?**                            | **Notes**                            |
 | ---------------------------------------------- | -------------------------------------------- | -------------------------------------------- |
-| **Valid API Key in Request Header**            | ✅ Request is allowed                        | Does not require origin to be provided in `ALLOWED_ORIGIN`                        |
-| **Valid API Key in `.env` but not in request** | ✅ Request is allowed (uses `.env` key)      | Requires origin to be provided in `ALLOWED_ORIGIN`      |
-| **Valid API Key in `.env` and in request**     | ✅ Request is allowed (uses request api key) | ✅Even if the origin is same as the valud of `ALLOWED_ORIGIN`, api key in the request will be used |
+| **Valid API Key in Request Header**            | ✅ Request is allowed                        | Does not require origin to be provided in `ALLOWED_ORIGINS`                        |
+| **Valid API Key in `.env` but not in request** | ✅ Request is allowed (uses `.env` key)      | Requires origin to be provided in `ALLOWED_ORIGINS`      |
+| **Valid API Key in `.env` and in request**     | ✅ Request is allowed (uses request api key) | ✅Even if the origin is provided in `ALLOWED_ORIGINS`, api key in the request will be used |
 | **No API Key provided in request or `.env`**   | ❌ Request is rejected                       |                        |
 
 ---
@@ -81,7 +81,7 @@ curl -X POST http://localhost:3000/summarize/text \
   -d '{ "content": { "text": "This is a test." }, "options": {} }'
 ```
 
-This will be valid only if the `ALLOWED_ORIGIN` is `http://localhost:3001`.
+This will be valid only if the `ALLOWED_ORIGINS` contains `http://localhost:3001`.
 
 ---
 

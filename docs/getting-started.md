@@ -60,9 +60,9 @@ OPENAI_API_KEY=
 # DeepSeek API Key for summarization (Optional if provided in request headers)
 DEEPSEEK_API_KEY=
 
-# Origin that is allowed to use the `OPENAI_API_KEY` & `DEEPSEEK_API_KEY` provided by the API
-# instead of needing to provide them as `Authorization` in each request from client
-ALLOWED_ORIGIN=http://localhost:3001
+# Origins that are allowed to use the AI models keys provided by the API, seperate them using a comma
+# instead of need to provide them as Authorization in each request from client
+ALLOWED_ORIGINS=http://localhost:3001,http://localhost:3000
 
 # Max Tokens (Limit the response length)
 OPENAI_MAX_TOKENS=500
@@ -87,9 +87,9 @@ Below is a breakdown of the `.env` variables and their functions:
 | **Variable**            | **Description**                                                                                                                                                            | **Required?**                          | **Default Value**       |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------- |
 | `NODE_ENV`              | Node.js environment (development, production, etc.)                                                                                                                        | ❌ No                                  | None                    |
-| `OPENAI_API_KEY`        | API key for using OpenAI GPT-4o, Whisper, and TTS-1 models. Only works if the origin matches the value of `ALLOWED_ORIGIN`. _(can be provided in request headers instead)_ | ❌ No                                  | None                    |
-| `DEEPSEEK_API_KEY`      | API key for using DeepSeek Chat (DeepSeek-V3). Only works if the origin matches the value of `ALLOWED_ORIGIN`. _(can be provided in request headers instead)_              | ❌ No                                  | None                    |
-| `ALLOWED_ORIGIN`        | Specifies the allowed frontend origin that can access API-provided keys                                                                                                    | ❌ No                                  | `http://localhost:3001` |
+| `OPENAI_API_KEY`        | API key for using OpenAI GPT-4o, Whisper, and TTS-1 models. Only works if the origin is listed in the `ALLOWED_ORIGINS`. _(can be provided in request headers instead)_ | ❌ No                                  | None                    |
+| `DEEPSEEK_API_KEY`      | API key for using DeepSeek Chat (DeepSeek-V3). Only works if the origin is listed in the `ALLOWED_ORIGINS`. _(can be provided in request headers instead)_              | ❌ No                                  | None                    |
+| `ALLOWED_ORIGINS`        | Specifies the allowed frontend origins that can access API-provided keys                                                                                                    | ❌ No                                  | `http://localhost:3001` |
 | `OPENAI_MAX_TOKENS`     | Maximum token limit for OpenAI-generated responses                                                                                                                         | ❌ No                                  | `500`                   |
 | `DEEPSEEK_MAX_TOKENS`   | Maximum token limit for DeepSeek-generated responses                                                                                                                       | ❌ No                                  | `1000`                  |
 | `AWS_ACCESS_KEY_ID`     | AWS Access Key for S3 storage (for text-to-speech audio files)                                                                                                             | ⚠️ Required only if `USE_S3` is `true` | None                    |
