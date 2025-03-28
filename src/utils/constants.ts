@@ -24,3 +24,5 @@ export const CORS_ORIGINS: string[] = process.env.CORS ? process.env.CORS.split(
 export const FASTAPI_URL = process.env.FASTAPI_URL || 'your-fastapi-url';
 
 export const PO_TOKEN = process.env.PO_TOKEN;
+
+export const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3001'];

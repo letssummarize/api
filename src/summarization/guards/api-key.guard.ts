@@ -1,16 +1,16 @@
 import { CanActivate, ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { Request } from "express";
 import { STTModel, SummarizationModel, SummarizationSpeed } from "../enums/summarization-options.enum";
-
+import { ALLOWED_ORIGINS } from 'src/utils/constants';
 
 export class ApiKeyGuard implements CanActivate {
-    private readonly allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:3000';
+    private readonly allowedOrigins: string[] = ALLOWED_ORIGINS;
 
     canActivate(context: ExecutionContext): boolean {
         const request:Request = context.switchToHttp().getRequest();
         const origin = request.headers.origin;
 
-        if(origin && origin === this.allowedOrigin) {
+        if(origin && this.allowedOrigins.includes(origin)) {
             return true;
         }
 

@@ -1,8 +1,9 @@
 @openaiKey = {{$dotenv OPENAI_API_KEY}}
 @deepseekKey = {{$dotenv DEEPSEEK_API_KEY}}
-@allowedOrigin = {{$dotenv ALLOWED_ORIGIN}}
-@baseUrl = https://letssummarize-api.vercel.app/
-@ytVideo = https://www.youtube.com/shorts/cKQC2-g6CRY
+@allowedOrigin = http://localhost:3001
+@baseUrl = http://localhost:3002
+@baseProdUrl = https://letssummarize.technway.biz
+@ytVideo = https://www.youtube.com/watch?v=R03DjtCPkGE&pp=ygUGdGVkIGVk
 
 @text = `I'm going to show you the best way to start practicing designing apps and websites in Figma. So in this video I'm going to give you step-by-step instructions. You can literally follow click by click. I'll only tell you the stuff that you need to get started designing interfaces. So let's get started. So we're going to be looking at a tool called Figma and it has a few advantages. One, most importantly for you, it's free to get started if you're working by yourself. We like using it at AGN Smart because it also has really good collaboration so we can have multiple people working on the same design file at the same time. It's also really fast. It works on any computer whether you have a Mac or a PC or Linux. Whatever you have it works right in the browser and it also has a mobile companion app so you can preview your designs on a mobile screen. So there are really no downsides to starting with a tool like Figma. As you're watching the video, if you have any questions about how to do a particular effect in Figma or any comment or something that you want to recommend, please put it in the comments below. And if you want to find out more tips about UI and UX, make sure to subscribe to our free newsletter. The link to that is in the description below and it's a great resource for anyone starting in UI and UX. So this is the website. You just go to Figma.com and I'm already signed in but you can sign up very quickly even with your Google account and get started. But before we jump right into Figma, I want to show you the way I would recommend to get started. So you just want to start practicing. Now for that, I'm not going to ask you to start designing something from scratch because I believe that would be very hard with someone, especially if you're a complete beginner in this space and you have no grounding in design principles and things like that. So the best way for you to get started is actually to copy other designs. And the reason this is so good is because you can see how this design was created so that when you get stuck on something, you can actually see how this person who created this file achieved particular effect or look inside of Figma. And this is totally fine in the beginning because you're not going to be selling these. You're not going to be saying that you designed something when you copied it from someone else. This is just for your own practice and it's a really good way to get started. So as you can see here, this is what Figma looks like after you log in and start a file. And I haven't even shown you how to start a file because I want you to use another file as your starting point as opposed to a blank file. And like I said, we're not going to cover everything that you can see here on the screen in terms of what all the various buttons do. We're just going to focus about how you can get started. Now to do that, I wanted to start off with a template. And what I literally did was I typed into Google Figma resources and I got a bunch of results`
 
@@ -12,9 +13,8 @@ GET {{baseUrl}}
 Content-Type: application/json
 
 ### Summarize YouTube Video
-POST {{baseUrl}}/summarize/video
+POST {{baseProdUrl}}/summarize/video
 Content-Type: application/json
-Authorization: Bearer {{deepseekKey}}
 Origin: {{allowedOrigin}}
 
 {
@@ -24,10 +24,11 @@ Origin: {{allowedOrigin}}
     "options": {
       "length": "comprehensive",
       "format": "default",
-      "speed": "fast",
-      "model": "deepseek",
+      "speed": "slow",
+      "model": "gemini",
+      "sttModel": "whisper-1",
       "listen": false,
-      "customInstructions": "use tables and add your opinion in the end",
+      "customInstructions": "",
       "lang": "english"
     }
 }
@@ -35,7 +36,6 @@ Origin: {{allowedOrigin}}
 ### Summarize Text
 POST {{baseUrl}}/summarize/text
 Content-Type: application/json
-Authorization: Bearer {{openaiKey}}
 Origin: {{allowedOrigin}}
 
 {
@@ -45,7 +45,7 @@ Origin: {{allowedOrigin}}
     "options": {
       "length": "brief",
       "format": "bullet-points",
-      "model": "openai",
+      "model": "gemini",
       "listen": false
     }
 }
@@ -53,20 +53,21 @@ Origin: {{allowedOrigin}}
 ### Summarize File
 POST {{baseUrl}}/summarize/file
 Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
-Authorization: Bearer {{openaiKey}}
+Origin: {{allowedOrigin}}
 
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="options"
+Content-Type: application/json
+
+{
+    "format": "bullet-points",
+    "model": "gemini",
+    "speed": "fast",
+    "listen": false
+}
 ------WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="file"; filename="example.pdf"
 Content-Type: application/pdf
-Origin: {{allowedOrigin}}
 
 < {{fileUrl}}
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="length"
-
-standard
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="format"
-
-narrative
-------WebKitFormBoundary7MA4YWxkTrZu0gW-->
+------WebKitFormBoundary7MA4YWxkTrZu0gW---->
