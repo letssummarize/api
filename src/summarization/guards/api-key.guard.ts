@@ -7,6 +7,7 @@ export class ApiKeyGuard implements CanActivate {
     private readonly allowedOrigins: string[] = ALLOWED_ORIGINS;
 
     canActivate(context: ExecutionContext): boolean {
+        console.log('allowedOrigins ', this.allowedOrigins)
         const request:Request = context.switchToHttp().getRequest();
         const origin = request.headers.origin;
 
