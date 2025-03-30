@@ -77,10 +77,12 @@ export const transcribeUsingFastWhisper = async (
   audioFilePath: string,
   httpService: HttpService,
 ) => {
+  console.log(`Transcribing file using FastWhisper at ${audioFilePath}`);
   try {
     const formData = new FormData();
     formData.append('file', createReadStream(audioFilePath), 'audio.mp3');
 
+    console.log('Sending request to FastWhisper API');
     const response = await firstValueFrom(
       httpService.post(FASTAPI_URL, formData, {
         headers: {
@@ -89,6 +91,7 @@ export const transcribeUsingFastWhisper = async (
       }),
     );
 
+    console.log('Received response from FastWhisper API');
     return response.data.text;
   } catch (error) {
     console.error(
